@@ -1,0 +1,23 @@
+[project]
+name = "liverquant"
+version = "0.0.1"
+authors = [
+  { name="Mohsen Farzi", email="mhnfarzi@gmail.com" },
+]
+description = "Quantitate liver histopathology in whole slide images"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies=['opencv-python', 'numpy', 'geojson', 'cv2geojson', 'openslide-python']
+keywords=['python', 'geojson', 'opencv', 'contours', 'polygons']
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/mfarzi/liverquant"
+"Bug Tracker" = "https://github.com/mfarzi/liverquant/issues"
