@@ -10,12 +10,12 @@ The image used in this example is download from [histology page](https://gtexpor
 <div style="display:flex; justify-content:center; align-items:center; flex-direction:column;">
   <div style="display:flex; justify-content:center; align-items:center;">
     <figure style="margin:0; padding:0;">
-      <img src="./images/GTEX-12584-1526-patch.jpg" alt="Image 1" style="width:30%; margin-right:10px;" />
-      <figcaption>Caption for image 1</figcaption>
+      <img src="https://github.com/mfarzi/liverquant/raw/main/images/GTEX-12584-1526-patch.jpg" alt="Image 1" style="width:30%; margin-right:10px;" />
+      <figcaption>Raw H&E Image Tile</figcaption>
     </figure>
     <figure style="margin:0; padding:0;">
-      <img src="./images/GTEX-12584-1526-tagged.jpg" alt="Image 2" style="width:30%; margin-left:10px;" />
-      <figcaption>Caption for image 2</figcaption>
+      <img src="https://github.com/mfarzi/liverquant/raw/main/images/GTEX-12584-1526-tagged.jpg?raw=true" alt="Image 2" style="width:30%; margin-left:10px;" />
+      <figcaption>Tagge H&E Image Tile with Detected Fat Globules in Green</figcaption>
     </figure>
   </div>
 </div>
