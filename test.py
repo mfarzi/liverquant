@@ -1,16 +1,16 @@
 import cv2 as cv
 from liverquant import detect_fat_globules
-from matplotlib import pyplot as plt
-# read sample image
-img = cv.imread('./images/GTEX-12584-1526-patch.jpg')
-img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 
-# Detect globules
-mask, _ = detect_fat_globules(img,
-                              lowerb=[0, 0, 100],
-                              upperb=[180, 30, 255],
-                              resolution=0.4942,
-                              hole_max=20)
+if __name__ == '__main__':
+    # read sample image tile
+    img = cv.imread('./example/tile01_HE.jpg')
+    img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 
-# Tag globules with green color
-img[mask == 255, :] = [5, 255, 5]
+    # Detect globules
+    mask = detect_fat_globules(img, resolution=0.4942)
+
+    # Tag globules with green color
+    img[mask == 255, :] = [5, 255, 5]
+
+    # write the tagged image
+    cv.imwrite('./example/tile01_HE_tagged.jpg', cv.cvtColor(img, cv.COLOR_BGR2RGB))

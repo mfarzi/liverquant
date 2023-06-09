@@ -8,7 +8,7 @@ description = "Quantitate liver histopathology in whole slide images"
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies=['opencv-python', 'numpy', 'geojson', 'cv2geojson', 'openslide-python']
-keywords=['python', 'geojson', 'opencv', 'contours', 'polygons']
+keywords=['python', 'geojson', 'opencv', 'liver', 'digital pathology']
 classifiers = [
     "Development Status :: 1 - Planning",
     "Programming Language :: Python :: 3",
