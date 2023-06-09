@@ -1,8 +1,10 @@
 # liverquant
 A python package for automated Whole Slide Image (WSI) analysis to quantitate fatty liver. The toolbox supports fat globule detection (see Examples 1 and 3) and fibrosis estimation (see Example 2). We plan to extend the toolbox to quantify inflammation and ballooning in future. 
 
-## Introduction
-In digital pathology, images are often quite large and dedicated software tools like [QuPath](https://qupath.github.io/) are required to aid visualisation. Liverquant support both tile-level analysis (see Examples 1 and 2) and WSI inputs (see Example 3) and export detected geometrical features in [geojson](https://geojson.org/) format using the [`cv2geojson`](https://github.com/mfarzi/cv2geojson) python package.
+## Istallation
+The recommended way to install is via pip:
+
+`pip install liverquant`
 
 ## Example 1: Detect Fat Globules
 In liver pathology, the presence of fat can be indicative of various conditions, such as fatty liver disease (steatosis), which can occur in the context of alcohol abuse, obesity, diabetes, or metabolic syndrome. H&E staining (Hematoxylin and Eosin staining) is a widely used staining technique in pathology that provides basic information about tissue architecture and cellular morphology. Under H&E staining, lipids (fats) appear as clear or pale vacuoles within cells. The image tile used in this example is download from [histology page](https://gtexportal.org/home/histologyPage) with the tissue sample ID _GTEX-12584-1526_. 
