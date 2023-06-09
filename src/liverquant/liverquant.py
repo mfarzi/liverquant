@@ -1,5 +1,6 @@
 import numpy as np
 import cv2 as cv
+from skimage.feature import peak_local_max
 import math
 from cv2geojson import GeoContour, find_geocontours, draw_geocontours, export_annotations
 from functools import wraps, partial
@@ -14,6 +15,7 @@ def get_contours_decorator(get_mask):
         mask = get_mask(*args, **kwargs)
         contours = find_geocontours(mask, mode='imagej')
         return contours
+
     return wrapper
 
 
@@ -23,21 +25,24 @@ def count_pixels_decorator(get_mask):
         mask = get_mask(*args, **kwargs)
         pixels_num = cv.countNonZero(mask)
         return pixels_num
+
     return wrapper
 
 
 def get_mask_decorator(get_contours):
     @wraps(get_contours)
     def wrapper(*args, **kwargs):
-        contours, frame_size = get_contours(*args, **kwargs)
+        frame_size = args[0].shape[:2]
+        geocontours = get_contours(*args, **kwargs)
+        # draw mask
         mask = np.zeros(frame_size, dtype=np.uint8)
-        cv.drawContours(mask, contours, -1, 255, -1)
+        mask = draw_geocontours(mask, geocontours, mode='imagej')
         return mask
     return wrapper
 
 
-def detect_fat_globules(img, mask=None, lowerb=None, upperb=None, overlap=0, resolution=1, min_diameter=5,
-                        max_diameter=50, hole_max=25):
+def detect_fat_globules_contour(img, mask=None, lowerb=None, upperb=None, overlap=0, resolution=1, min_diameter=5,
+                                max_diameter=100):
     """
     Detect fat globules by segmenting white blobs in the HSV space and then classify them using morphological features
 
@@ -49,13 +54,12 @@ def detect_fat_globules(img, mask=None, lowerb=None, upperb=None, overlap=0, res
     :param resolution:   pixel resolution in micron
     :param min_diameter: Minimum diameter of a white blob to be considered as a fat globule
     :param max_diameter: Maximum diameter of a white blob to be considered as a fat globule
-    :param hole_max:     maximum area of a hole in a white blob to be filled in [micro-meter squared]
 
     :return globules:   Binary mask of detected globules formatted as a numpy array [either 255 or 0]
     :return mask_white: Binary mask of detected white regions formatted as a numpy array [either 255 or 0]
     """
     if lowerb is None:
-        lowerb = [0, 0, 230]
+        lowerb = [0, 0, 200]
     if upperb is None:
         upperb = [180, 25, 255]
 
@@ -64,43 +68,84 @@ def detect_fat_globules(img, mask=None, lowerb=None, upperb=None, overlap=0, res
                                   mask=mask,
                                   lowerb=lowerb,
                                   upperb=upperb,
-                                  hole_size=hole_max,
+                                  hole_size=-1,
                                   resolution=resolution)
 
-    # Extract geocontours
-    contours = find_geocontours(mask_white, mode='opencv')
+    # morphological opening using circular mask to remove spurious branches
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
+    mask_white = cv.morphologyEx(mask_white, cv.MORPH_OPEN, kernel=kernel, iterations=3)
+
+    # Extract geocontours for morphological feature extraction and globules detection
+    geocontours = find_geocontours(mask_white, mode='imagej')
+
+    # step 1: Find non-overlapping fat globules
+    globules = []
+    sure_bg = np.zeros_like(mask_white, dtype=np.uint8)
+    for geocontour in geocontours:
+        center, radius = geocontour.min_enclosing_circle()
+        c_x, c_y = center
+        diameter = radius * 2 * resolution
+
+        # assert this contour does not appear in the overlapped region and is of appropriate size
+        if (overlap <= c_x < img.shape[0] - overlap) and (overlap <= c_y < img.shape[1] - overlap) and \
+                (min_diameter < diameter < max_diameter):
+            area = geocontour.area(resolution)
+            elongation = geocontour.elongation()
+            solidity = geocontour.solidity()
+            is_fat_globule = elongation > 0.5 and solidity > 0.85
+            is_unknown = (area > 500 or elongation > 0.1) and solidity > 0.6
+            if is_fat_globule:
+                globules.append(geocontour)
+            elif is_unknown:
+                # could be overlapping fat globules
+                sure_bg = draw_geocontours(sure_bg, [geocontour], mode='imagej')
+            # otherwise exclude the white blob
+
+    # step 2: Use watershed segmentation to separate overlapping globules
+    # Initiate markers by finding sure foreground area
+    dist_transform = cv.distanceTransform(sure_bg, cv.DIST_L2, 5)
+    local_max = peak_local_max(dist_transform, min_distance=10)
+    sure_fg = np.zeros_like(sure_bg, dtype=np.uint8)
+    for loc in local_max:
+        sure_fg[loc[0], loc[1]] = 255
+    sure_fg = cv.dilate(sure_fg, kernel, iterations=2)
+    # Marker labelling
+    ret, markers = cv.connectedComponents(sure_fg)
+    # Add one to all labels so that sure background is not 0, but 1
+    markers = markers + 1
+
+    unknown = cv.subtract(sure_bg, sure_fg)
+    # Now, mark the region of unknown with zero
+    markers[unknown == 255] = 0
+    # apply the watershed segmentation
+    markers = cv.watershed(img, markers)
+
+    # extract geocontours for each segmented blob
+    geocontours = []
+    mask = np.zeros_like(sure_bg, dtype=np.uint8)
+    for i in range(2, ret + 1):
+        mask[markers == i] = 255
+        geocontours.extend(find_geocontours(mask, mode='imagej'))
+        mask[markers == i] = 0
 
     # Classify each geometry using morphological features
-    globules = np.zeros_like(mask_white, dtype=np.uint8)
-    for contour in contours:
-        if contour.type == 'Polygon' and contour.holes_num() == 0:
-            center, radius = contour.min_enclosing_circle()
-            c_x, c_y = center
-            diameter = radius * 2 * resolution
+    for geocontour in geocontours:
+        is_globule = geocontour.elongation() > 0.3 and geocontour.solidity() > 0.85
+        if is_globule and geocontour.holes_num() == 0:
+            globules.append(geocontour)
 
-            # assert this contour does not appear in the overlapped region and is of appropriate size
-            if (overlap <= c_x < img.shape[0] - overlap) and (overlap <= c_y < img.shape[1] - overlap) and \
-                    (min_diameter < diameter < max_diameter):
-                aspect_ratio = contour.aspect_ratio()
-                solidity = contour.solidity()
-                area = contour.area(resolution)
-                metric_1 = aspect_ratio > 0.7 and solidity > 0.8
-                metric_2 = area > 50 and solidity > 0.87 and aspect_ratio > 0.7
-                if metric_1 or metric_2:
-                    globules = draw_geocontours(globules, [contour])
-
-    return globules, mask_white
+    return globules
 
 
-@get_contours_decorator
-def detect_fat_globules_contour(*args, **kwargs):
+@get_mask_decorator
+def detect_fat_globules(*args, **kwargs):
     # wrapper function for detect_fat_globules
-    result = detect_fat_globules(*args, **kwargs)
-    return result[0]
+    result = detect_fat_globules_contour(*args, **kwargs)
+    return result
 
 
 def detect_fat_globules_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=2048, overlap=128, downsample=2,
-                            hole_max=25, cores_num=4):
+                            min_diameter=5, max_diameter=100, cores_num=4):
     """
     Detect fat globules by sweeping over the whole slide image (WSI) tile by tile and return annotations (geojson)
 
@@ -111,7 +156,8 @@ def detect_fat_globules_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size
     :param tile_size:            The tile size to sweep the whole slide image
     :param overlap:              Integer value; globules with centre inside overlap region will be excluded
     :param downsample:           Downsampling ratio as a power of two
-    :param hole_max:             Maximum area of a hole in a white blob to be filled in [micro-meter squared]
+    :param min_diameter:         Minimum diameter of a white blob to be considered as a fat globule
+    :param max_diameter:         Maximum diameter of a white blob to be considered as a fat globule
     :param cores_num:            Number of cores for parallel computation
 
     :return geocontours:         List of cv2geojson.GeoContour geometries representing fat globules as Polygons
@@ -119,11 +165,7 @@ def detect_fat_globules_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size
     :return fat_proportion_area: The amount of fat in the tissue represented in percent
     :return run_time:            Run time for the code in seconds
     """
-    if upperb is None:
-        upperb = [180, 25, 255]
-    if lowerb is None:
-        lowerb = [0, 0, 230]
-
+    start_time = time.time()
     if roi is None:
         roi = segment_foreground_wsi(slide, min_area=500000)
 
@@ -132,21 +174,17 @@ def detect_fat_globules_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size
     # extract image tiles
     tiles = PatchGenerator(slide, tile_size=tile_size, overlap=overlap, downsample=downsample, roi=roi)
     print(f'Start parallel computation using {cores_num} cores...')
-    start_time = time.time()
     with Pool(cores_num) as pool:
         partial_detect_fat_globules = partial(detect_fat_globules_contour,
                                               lowerb=lowerb,
                                               upperb=upperb,
                                               overlap=overlap,
                                               resolution=pixel_resolution,
-                                              max_diameter=50,
-                                              min_diameter=5,
-                                              hole_max=hole_max)
+                                              max_diameter=max_diameter,
+                                              min_diameter=min_diameter)
         results = pool.starmap(partial_detect_fat_globules, tiles)
     pool.close()
-    end_time = time.time()
-    run_time = end_time - start_time
-    print(f'parallel coding is completed in {np.round(run_time, 3)} seconds')
+    print('parallel coding is completed.')
 
     # pooling results and scaling contours
     geocontours = []
@@ -156,10 +194,13 @@ def detect_fat_globules_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size
         geocontours.extend([contour.scale_up(ratio=downsample, offset=offset) for contour in contours])
 
     # estimate fat proportin area
-    area_tissue = np.sum([cnt.area() for cnt in roi])
-    area_fat = np.sum([cnt.area() for cnt in geocontours])
+    area_tissue = np.sum([cnt.area(pixel_resolution) for cnt in roi])
+    area_fat = np.sum([cnt.area(pixel_resolution) for cnt in geocontours])
     fat_proportion_area = np.round(area_fat / area_tissue * 100, 2)
-    return geocontours, roi, fat_proportion_area, run_time
+
+    end_time = time.time()
+    run_time = end_time - start_time
+    return fat_proportion_area, geocontours, roi, run_time
 
 
 def segment_by_color(img, mask=None, lowerb=None, upperb=None, hole_size=0, resolution=1):
@@ -170,7 +211,7 @@ def segment_by_color(img, mask=None, lowerb=None, upperb=None, hole_size=0, reso
     :param mask:         A numpy array of desired ROIs [either 255 or 0] corresponding to img
     :param lowerb:       Inclusive lower bound array in HSV-space for color segmentation
     :param upperb:       Inclusive upper bound array in HSV-space for color segmentation
-    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. If None, all holes
+    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
                          will be removed.
     :param resolution:   Image pixel resolution in micron
     :param mode:         Either 'opencv' or 'imagej'
@@ -235,7 +276,7 @@ def _export_geocontour_parallel(file_name, geocontours, offset=(0, 0), scale=1):
     return area_color
 
 
-def segment_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=2048, downsample=2, hole_size=50,
+def segment_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=2048, downsample=2, hole_size=0,
                          cores_num=4, output=None):
     """
     Segment regions based on their color profile in HSV space by sweeping over the whole slide image (WSI) tile by tile
@@ -247,7 +288,7 @@ def segment_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=20
     :param upperb:       inclusive upper bound array in HSV-space for color segmentation
     :param tile_size:    The tile size to sweep the whole slide image
     :param downsample:   Downsampling ratio as a power of two
-    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. if None, all holes
+    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. if -1, all holes
                          will be filled in [micro-meter squared]
     :param cores_num:    Number of cores for parallel computation
     :param mode:         Either 'imagej' or 'opencv'
@@ -275,7 +316,7 @@ def segment_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=20
                                            lowerb=lowerb,
                                            upperb=upperb,
                                            hole_size=hole_size,
-                                           resolution=pixel_resolution*downsample)
+                                           resolution=pixel_resolution * downsample)
         results = pool.starmap(partial_segment_by_color, tiles)
 
         if output is not None:
@@ -301,7 +342,7 @@ def segment_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=20
     return geocontours, area_color, run_time
 
 
-def count_pixels_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=2048, downsample=2, hole_size=50,
+def count_pixels_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size=2048, downsample=2, hole_size=0,
                               cores_num=4):
     """
     Segment regions based on their color profile in HSV space by sweeping over the whole slide image (WSI) tile by tile
@@ -313,7 +354,7 @@ def count_pixels_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_si
     :param upperb:       inclusive upper bound array in HSV-space for color segmentation
     :param tile_size:    The tile size to sweep the whole slide image
     :param downsample:   Downsampling ratio as a power of two
-    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. if None, all holes
+    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. if -1, all holes
                          will be filled in [micro-meter squared]
     :param cores_num:    Number of cores for parallel computation
 
@@ -338,7 +379,7 @@ def count_pixels_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_si
                                                lowerb=lowerb,
                                                upperb=upperb,
                                                hole_size=hole_size,
-                                               resolution=pixel_resolution*downsample)
+                                               resolution=pixel_resolution * downsample)
         results = pool.starmap(partial_count_pixel_by_color, tiles)
     pool.close()
     end_time = time.time()
@@ -351,11 +392,11 @@ def count_pixels_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_si
     return pixels_num, area, run_time
 
 
-def fill_holes(mask, hole_size=None, resolution=1):
+def fill_holes(mask, hole_size=-1, resolution=1):
     """
     Fill in small holes (< hole_size) inside the input 2D binary mask
     :param mask:         A binary numpy array [either 255 or 0]
-    :param hole_size:    Remove holes smaller than hole_size; if zero, return mask. If None, fill in all holes
+    :param hole_size:    Remove holes smaller than hole_size; if zero, return mask. If -1, fill in all holes
     :param resolution:   The pixel resolution in micron
 
     :return mask:        A binary numpy array similar to input mask with holes are filled in.
@@ -369,7 +410,7 @@ def fill_holes(mask, hole_size=None, resolution=1):
     for index, contour in enumerate(contours):
         # check if the contour has a parent, which means it is a hole
         if hierarchy[0, index, 3] > -1:
-            if hole_size is None:
+            if hole_size < 0:
                 # fill in the hole regardless of its size
                 cv.drawContours(mask, [contour], 0, 255, -1)
             else:
@@ -453,4 +494,3 @@ def segment_foreground_wsi(slide, lowerb=None, upperb=None, min_area=5e5):
     # scale contours
     geocontours = [geocontour.scale_up(ratio=downsample) for geocontour in geocontours]
     return geocontours
-
