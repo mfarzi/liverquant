@@ -167,7 +167,7 @@ def detect_fat_globules_wsi(slide, roi=None, lowerb=None, upperb=None, tile_size
     """
     start_time = time.time()
     if roi is None:
-        roi = segment_foreground_wsi(slide, min_area=500000)
+        roi = segment_foreground_wsi(slide)
 
     pixel_resolution = float(slide.properties['openslide.mpp-x'])
 
@@ -242,14 +242,8 @@ def segment_by_color(img, mask=None, lowerb=None, upperb=None, hole_size=0, reso
     if mask is not None:
         mask_color = cv.bitwise_and(mask_color, mask)
 
-    # export geocontours
-    # geocontours = find_geocontours(mask_color, mode=mode)
-
     # remove small holes
     mask = fill_holes(mask_color, hole_size=hole_size, resolution=resolution)
-
-    # for contour in geocontours:
-    #     contour.fill_hole(resolution=resolution, hole_size=hole_size)
 
     return mask
 
@@ -392,7 +386,7 @@ def count_pixels_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_si
     return pixels_num, area, run_time
 
 
-def fill_holes(mask, hole_size=-1, resolution=1):
+def fill_holes(mask, hole_size=-1.0, resolution=1):
     """
     Fill in small holes (< hole_size) inside the input 2D binary mask
     :param mask:         A binary numpy array [either 255 or 0]
@@ -472,9 +466,9 @@ def segment_foreground_wsi(slide, lowerb=None, upperb=None, min_area=5e5):
     """
     # extract background in white color
     if lowerb is None:
-        lowerb = [0, 0, 200]
+        lowerb = [0, 0, 230]
     if upperb is None:
-        upperb = [180, 30, 255]
+        upperb = [180, 10, 255]
 
     # set downsample ratio
     downsample = 32
