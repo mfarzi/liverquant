@@ -87,7 +87,7 @@ Retreive fat vacoules in `cv2geojson.GeoContour` format from the whole slide ima
 > This function divides the input image into overlapping image tiles and applies the `detect_fat_globules` algorithm (refer to [Example 1](#example-1)) to each image tile. `detect_fat_globules_wsi` employs parallel computation, and the entire script should be enclosed within a `if __name__ == '__main__'` block. Liverquant export detected geometrical features in [geojson](https://geojson.org/) format using the [`cv2geojson`](https://github.com/mfarzi/cv2geojson) python package, which can be visualised using dedicated software tools like [QuPath](https://qupath.github.io/). 
 
 #### Example 2
-Here is a short script to demonstrate the utility of `detect_fat_globules_wsi`. The WSI used in this example is not provided due to its large size but can be downloaded from [histology page](https://gtexportal.org/home/histologyPage) with the tissue sample ID _GTEX-12584-1526_. The estimated fat proportionate area is 12.8% and the run time was about 224 seconds.
+Here is a short script to demonstrate the utility of `detect_fat_globules_wsi`. The WSI used in this example is not provided due to its large size but can be downloaded from [histology page](https://gtexportal.org/home/histologyPage) with the tissue sample ID _GTEX-12584-1526_. The estimated fat proportionate area is 13.8% and the run time was about 214 seconds.
 
 <figure>
   <img src="https://github.com/mfarzi/liverquant/raw/main/example/fat_detection_wsi_qupath_screenshot.png" alt="Visualise Fat globules in WSI using QuPath" style="width:80%; margin-right:10px;" />
