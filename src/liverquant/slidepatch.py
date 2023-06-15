@@ -139,6 +139,6 @@ def get_tile_mask(roi=None, address=(0, 0), tile_size=(1024, 1024), downsample=1
     if roi is None:
         mask = mask + 255
     else:
-        roi_scaled = [contour.scale_down(ratio=downsample, offset=address) for contour in roi]
-        mask = draw_geocontours(mask, roi_scaled, mode='imagej')
+        # roi_scaled = [contour.scale_down(ratio=downsample, offset=address) for contour in roi]
+        draw_geocontours(mask, roi, scale=downsample, offset=address, mode='imagej')
     return mask
