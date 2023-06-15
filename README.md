@@ -9,7 +9,7 @@ A python package for automated Whole Slide Image (WSI) analysis to quantitate fa
 - [Fibrosis Qauntification](#fibrosis-qauntification)
   - [segment_by_color](#segment_by_color)
 
-## Istallation
+## Installation
 The recommended way to install is via pip:
 
 `pip install liverquant`
