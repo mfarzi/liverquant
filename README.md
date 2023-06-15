@@ -3,10 +3,10 @@ A python package for automated Whole Slide Image (WSI) analysis to quantitate fa
 
 ## Contents
 - [Installation](#installation)
-- [Fat Qauntification](#fat-quantification)
-  - [detect_fat_globules](#detec_fat_globules)
+- [Fat Qauntification](#fat-qauntification)
+  - [detect_fat_globules](#detect_fat_globules)
   - [detect_fat_globules_wsi](#detect_fat_globules_wsi)
-- [Fibrosis Qauntification](#fibrosis-quantification)
+- [Fibrosis Qauntification](#fibrosis-qauntification)
   - [segment_by_color](#segment_by_color)
 
 ## Istallation
