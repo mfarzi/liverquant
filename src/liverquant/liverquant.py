@@ -328,7 +328,7 @@ def count_pixels_by_color_wsi(slide, roi=None, lowerb=None, upperb=None, tile_si
     if lowerb is None:
         lowerb = [0, 0, 200]
     if upperb is None:
-        upperb = [180, 30, 255]
+        upperb = [180, 25, 255]
 
     pixel_resolution = float(slide.properties['openslide.mpp-x'])
     # pixel_resolution = 10000.0 / float(slide.properties['tiff.XResolution'])
