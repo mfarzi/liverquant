@@ -1,10 +1,5 @@
-import os
 import numpy as np
 from PIL import Image
-import cv2 as cv
-openslide_path = "C:\\Users\\mfarzi\\Documents\\mycodes\\Libraries\\openslide-win64-20220811\\bin"
-os.environ['PATH'] = openslide_path + ";" + os.environ['PATH']
-from openslide import OpenSlide
 from cv2geojson import draw_geocontours
 
 
