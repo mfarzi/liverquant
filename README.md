@@ -3,18 +3,19 @@ A python package for automated Whole Slide Image (WSI) analysis to quantitate fa
 
 ## Contents
 - [Installation](#installation)
-- [Fat Qauntification](#fat-qauntification)
+- [Fat Quantification](#fat-quantification)
   - [detect_fat_globules](#detect_fat_globules)
   - [detect_fat_globules_wsi](#detect_fat_globules_wsi)
-- [Fibrosis Qauntification](#fibrosis-qauntification)
+- [Fibrosis Quantification](#fibrosis-quantification)
   - [segment_by_color](#segment_by_color)
+  - [segment_by_color_wsi](#segment_by_color_wsi)
 
 ## Installation
 The recommended way to install is via pip:
 
 `pip install liverquant`
 
-## Fat Qauntification
+## Fat Quantification
 In liver pathology, the presence of fat can be indicative of various conditions, such as fatty liver disease (steatosis), which can occur in the context of alcohol abuse, obesity, diabetes, or metabolic syndrome. Hematoxylin and Eosin (H&E) staining is a widely used technique in pathology that provides basic information about tissue architecture and cellular morphology. Under H&E staining, lipids (fats) appear as clear or pale vacuoles within cells. The workflow to identify fat vauoles is shown below. In brief, white regions are segmented using _Hue-Saturation-Value_ channels. Isolated fat vacuoles are segmented using morphological features. Overlapping fat globules are seperated using a watershed segmentation and then identified using the same filters applied to isolated fat vacuoles.
 
 <figure>
@@ -118,7 +119,7 @@ if __name__ == '__main__':
     print(f'The run time is {run_time} seconds.')
 ```
 
-## Fibrosis Qauntification
+## Fibrosis Quantification
 Liver fibrosis is a progressive condition characterized by the excessive accumulation of extracellular matrix components, particularly collagen, within the liver tissue. It is typically a consequence of chronic liver injury caused by various factors such as viral hepatitis, alcohol abuse, metabolic disorders, or autoimmune diseases. The excessive collagen deposition disrupts the normal liver architecture and impairs its function over time.
 
 To evaluate the extent of liver fibrosis, histological staining techniques are commonly employed. Picrosirius red (PSR), Masson's Trichrome (MTC), and Van Gieson (VG) staining are three widely used methods to visualize and quantify the collagen content within liver tissue. These techniques allow for the identification of collagen fibers and provide valuable information about the severity and distribution of fibrosis.
@@ -135,7 +136,7 @@ The libarary implements two main methods to identify collagens using colour segm
 Retreive a binary mask for segmented regions based on their colour profile in the HSV space.
 - Parameters:
   - img: {numpy.ndarray}: input RGB image tile in range [0, 255]
-  - mask=None: {numpy.ndarray}: binary mask (either 0 or 255) for regions-of-interest
+  - mask: {numpy.ndarray}: binary mask (either 0 or 255) for regions-of-interest [default=None]
   - lowerb: {list: 3}: inclusive lower bound array in HSV-space for color segmentation [default=[0, 0, 200]]
   - upperb: {list: 3}: inclusive upper bound array in HSV-space for color segmentation [default=[0, 25, 255]]
   - hole_size: {float}: remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
@@ -174,3 +175,66 @@ mask = segment_by_color(img,
 cv.imwrite('./example/tile02_PSR_mask.jpg', mask)
 ```
 
+### <code>segment_by_color_wsi</code>
+Retreive segmented regions in `cv2geojson.GeoContour` format based on their colour profile in the HSV space from the whole slide image (WSI).
+- Parameters:
+  - img: {numpy.ndarray}: input RGB image tile in range [0, 255]
+  - roi: {list: cv2geojson.GeoContours}: regions-of-interest in the WSI frame [default=None]
+  - lowerb: {list: 3}: inclusive lower bound array in HSV-space for color segmentation [default=[0, 0, 200]]
+  - upperb: {list: 3}: inclusive upper bound array in HSV-space for color segmentation [default=[0, 25, 255]]
+  - tile_size: {int}: the tile size to sweep the whole slide image [default=2048]
+  - downsample: {int}: downsampling ratio as a power of two [default=2]
+  - hole_size: {float}: remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
+                        will be removed. [default=0]
+  - cores_num: {int}: max number of cores to be used for parallel computation 
+
+- Returns:
+  - geocontours: {list: cv2geojson.GeoContour}: polygons representing segmented regions
+  - area_color: {float}: the area of segmented regions in milli-meter squared
+  - run_time: {float}: run time for the code completion in seconds
+
+> Note that similar to _OpenCV_, Hue has values from 0 to 180, Saturation and Value from 0 to 255. This function divides the input image into image tiles and applies the `segment_by_color` algorithm (refer to [Example 3](#example-3)) to each image tile. `segment_by_color_wsi` employs parallel computation, and the entire script should be enclosed within a `if __name__ == '__main__'` block. Liverquant export detected geometrical features in [geojson](https://geojson.org/) format using the [`cv2geojson`](https://github.com/mfarzi/cv2geojson) python package, which can be visualised using dedicated software tools like [QuPath](https://qupath.github.io/). 
+
+#### Example 4
+Here is a short script to demonstrate the utility of `segment_by_color_wsi`. To segment the collagen shown in red, Hue between 0 and 10 or 170-180 should be filtered out. Since Hue is inherently periodic, negative Hue can be interpreted as positive integers by adding 180. We have combined the two ranges into one effective range [-10, 10]in the sample code below. The WSI used in this example is not provided due to its large size but can be downloaded from [histology page](https://gtexportal.org/home/histologyPage) with the tissue sample ID _GTEX-12584-1526_. The estimated collagen proportionate area is 13.8% and the run time was about 214 seconds.
+
+```
+from liverquant import segment_by_color_wsi, segment_foreground_wsi
+from cv2geojson import export_annotations
+from openslide import OpenSlide
+import numpy as np
+
+if __name__ == '__main__':
+    # open the whole slide image
+    slide = OpenSlide('./example/filename.svs')
+    resolution = float(slide.properties['openslide.mpp-x'])
+
+    # segment foreground
+    roi = segment_foreground_wsi(slide)
+    area_tissue = np.sum([cnt.area(resolution) for cnt in roi])*1e-6
+
+    # Segment collagen using Hue-Saturation-Value channels
+    geocontours, area_color, run_time = segment_by_color_wsi(slide,
+                                                             roi=roi,
+                                                             lowerb=[-10, 50, 100],
+                                                             upperb=[10, 255, 255],
+                                                             downsample=8,
+                                                             tile_size=4096,
+                                                             hole_size=250,
+                                                             cores_num=12)
+
+    # export geojson features
+    features = []
+    for geocontour in roi:
+        features.append(geocontour.export_feature(color=(255, 0, 0), label='foreground'))
+    for geocontour in geocontours:
+        if geocontour.area(resolution) > 500:
+            features.append(geocontour.export_feature(color=(0, 0, 255), label='fibrosis'))
+    export_annotations(features, './example/filename.geojson')
+
+    cpa = area_color / area_tissue * 100
+
+    # print out results
+    print(f'The collagen proportionate area is {cpa}%.')
+    print(f'The run time is {run_time} seconds.')
+```
