@@ -24,19 +24,19 @@ In liver pathology, the presence of fat can be indicative of various conditions,
 
 > Note: The image tile used in this example is download from [histology page](https://gtexportal.org/home/histologyPage) with the tissue sample ID _GTEX-12584-1526_. 
 
-The libarary implements three main methods to identify fat globules.
+The libarary implements two main methods to identify fat globules.
 
 ### <code>detect_fat_globules</code>
 Retreive a binary mask for fat vacoules from input RGB image tile.
 - Parameters:
   - img: {numpy.ndarray}: input RGB image tile in range [0, 255]
-  - mask=None: {numpy.ndarray}: binary mask (either 0 or 255) for regions-of-interest
-  - lowerb=None: {list: 3}: inclusive lower bound array in HSV-space for color segmentation
-  - upperb=None: {list: 3}: inclusive upper bound array in HSV-space for color segmentation
-  - overalp=0: {int}: globules with centre inside overlap region will be excluded to avoid double-counting in whole-slide-image
-  - resolution=1.0: {float}: pixel size in micro-meter
-  - min_diameter=5.0: {float}: minimum diameter of a white blob to be considered as a fat globule
-  - max_diameter=100.0: {float}: maximum diameter of a white blob to be considered as a fat globule
+  - mask: {numpy.ndarray}: binary mask (either 0 or 255) for regions-of-interest [default=None]
+  - lowerb: {list: 3}: inclusive lower bound array in HSV-space for color segmentation [default=[0, 0, 200]]
+  - upperb: {list: 3}: inclusive upper bound array in HSV-space for color segmentation [default=[180, 25, 255]]
+  - overalp: {int}: globules with centre inside overlap region will be excluded to avoid double-counting in whole-slide-image [default=0]
+  - resolution: {float}: pixel size in micro-meter [default=1]
+  - min_diameter: {float}: minimum diameter of a white blob to be considered as a fat globule [default=5]
+  - max_diameter: {float}: maximum diameter of a white blob to be considered as a fat globule [default=100]
 - Returns:
   - mask: {numpy.ndarray}: binary mask (either 0 or 255) for identified fat vacuoles
 
@@ -196,7 +196,7 @@ Retreive segmented regions in `cv2geojson.GeoContour` format based on their colo
 > Note that similar to _OpenCV_, Hue has values from 0 to 180, Saturation and Value from 0 to 255. This function divides the input image into image tiles and applies the `segment_by_color` algorithm (refer to [Example 3](#example-3)) to each image tile. `segment_by_color_wsi` employs parallel computation, and the entire script should be enclosed within a `if __name__ == '__main__'` block. Liverquant export detected geometrical features in [geojson](https://geojson.org/) format using the [`cv2geojson`](https://github.com/mfarzi/cv2geojson) python package, which can be visualised using dedicated software tools like [QuPath](https://qupath.github.io/). 
 
 #### Example 4
-Here is a short script to demonstrate the utility of `segment_by_color_wsi`. To segment the collagen shown in red, Hue between 0 and 10 or 170-180 should be filtered out. Since Hue is inherently periodic, negative Hue can be interpreted as positive integers by adding 180. We have combined the two ranges into one effective range [-10, 10]in the sample code below. The WSI used in this example is not provided due to its large size but can be downloaded from [histology page](https://gtexportal.org/home/histologyPage) with the tissue sample ID _GTEX-12584-1526_. The estimated collagen proportionate area is 13.8% and the run time was about 214 seconds.
+Here is a short script to demonstrate the utility of `segment_by_color_wsi`. To segment the collagen shown in red, Hue between 0 and 10 or 170-180 should be filtered out. Since Hue is inherently periodic, negative Hue can be interpreted as positive integers by adding 180. We have combined the two ranges into one effective range [-10, 10]in the sample code below.
 
 ```
 from liverquant import segment_by_color_wsi, segment_foreground_wsi
