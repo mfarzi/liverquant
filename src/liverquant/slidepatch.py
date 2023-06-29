@@ -7,11 +7,11 @@ class PatchGenerator:
     """
     PatchGenerator returns an iterator to sweep through a whole slide image tile by tile
     """
-    def __init__(self, slide, tile_size=1024, overlap=0, downsample=1, roi=None, fov=None):
+    def __init__(self, slide, tile_size=1024, overlap=0, downsample=1, roi=None, fov=None, ensure_fit=False):
         if fov is None:
             fov = [(0, 0), slide.dimensions]
         tile_addresses = extract_tiles(fov, tile_size=tile_size, overlap=overlap, downsample=downsample,
-                                       roi=roi)
+                                       roi=roi, ensure_fit=ensure_fit)
 
         self.slide = slide
         self.address = [address[0] for address in tile_addresses]
@@ -39,7 +39,7 @@ class PatchGenerator:
         return patch, mask
 
 
-def extract_tiles(frame_size, tile_size=(1024, 1024), overlap=(0, 0), downsample=1, roi=None):
+def extract_tiles(frame_size, tile_size=(1024, 1024), overlap=(0, 0), downsample=1, roi=None, ensure_fit=False):
     """
     Export image tiles' coordinates from the whole slide image (WSI) for patch-based analysis
 
@@ -66,6 +66,9 @@ def extract_tiles(frame_size, tile_size=(1024, 1024), overlap=(0, 0), downsample
     stride_x_downsample = stride_x * downsample
     stride_y_downsample = stride_y * downsample
 
+    if ensure_fit:
+        col_max -= stride_x_downsample
+        row_max -= stride_y_downsample
     address = []
     for col in range(col_offset, col_max, stride_x_downsample):
         for row in range(row_offset, row_max, stride_y_downsample):
