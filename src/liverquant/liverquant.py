@@ -74,8 +74,8 @@ def detect_fat_globules_contour(img, mask=None, lowerb=None, upperb=None, overla
                                   resolution=resolution)
 
     # morphological opening using circular mask to remove spurious branches
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
-    mask_white = cv.morphologyEx(mask_white, cv.MORPH_OPEN, kernel=kernel, iterations=3)
+    # kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
+    # mask_white = cv.morphologyEx(mask_white, cv.MORPH_OPEN, kernel=kernel, iterations=3)
 
     # step 1: Find non-overlapping fat globules
     # Extract geocontours for morphological feature extraction and globules detection
