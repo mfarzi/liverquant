@@ -8,6 +8,6 @@ __status__ = "planning"
 
 from .liverquant import *
 from .slidepatch import *
-
+from .colorutil import *
 
 
