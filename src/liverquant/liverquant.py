@@ -385,32 +385,58 @@ def fill_holes(mask, hole_size=-1.0, resolution=1.0):
     return mask
 
 
-def segment_foreground(img, lowerb=None, upperb=None, resolution=1.5, min_area=5e5):
+def segment_foreground(img, lowerb=None, upperb=None, resolution=1.0, min_area=5e5, mode='bg'):
     """
-    segment the background in white color and return the foreground mask by negating the background
+    segment the background in white color and return the foreground mask by negating the background or segment the
+    foreground directly if stain is provided
 
     :param img:          A numpy array of input image
     :param lowerb:       inclusive lower bound array in HSV-space for background segmentation
     :param upperb:       inclusive upper bound array in HSV-space for background segmentation
     :param resolution:   pixel resolution in micron
     :param min_area:     minimum area of a tissue ROI [micro-meter squared]; smaller ROIs will be removed
+    :param mode:        'bg' for background segmentation or 'fg' for foreground segmentation
 
     :return foreground:  A binary mask represented as a numpy array of selected ROIs [either 255 or 0]
     """
     # extract background in white color
     if lowerb is None:
-        lowerb = [0, 0, 230]
+        if mode == 'bg':
+            lowerb = [0, 0, 230]
+        elif mode == 'fg':
+            lowerb = [140, 25, 180]
+        else:
+            raise ValueError('mode must be either "bg" or "fg".')
+
     if upperb is None:
-        upperb = [180, 10, 255]
+        if mode == 'bg':
+            upperb = [180, 10, 255]
+        elif mode == 'fg':
+            upperb = [180, 255, 255]
+        else:
+            raise ValueError('mode must be either "bg" or "fg".')
 
-    # segment white regions as background
-    background = segment_by_color(img, lowerb=lowerb, upperb=upperb)
+    if mode == 'bg':
+        # segment white regions as background
+        background = segment_by_color(img, lowerb=lowerb, upperb=upperb)
 
-    # pad background mask so holes touching the edges will be removed as well
-    background = cv.copyMakeBorder(background, 1, 1, 1, 1, cv.BORDER_CONSTANT, value=255)
-    background = fill_holes(background, hole_size=min_area, resolution=resolution)
-    foreground = cv.bitwise_not(background[1:-1, 1:-1])
-    foreground = fill_holes(foreground, resolution=resolution)
+        # pad background mask so holes touching the edges will be removed as well
+        background = cv.copyMakeBorder(background, 1, 1, 1, 1, cv.BORDER_CONSTANT, value=255)
+        background = fill_holes(background, hole_size=min_area, resolution=resolution)
+        foreground = cv.bitwise_not(background[1:-1, 1:-1])
+        foreground = fill_holes(foreground, resolution=resolution)
+    elif mode == 'fg':
+        # segment foreground using color segmentation
+        mask = segment_by_color(img, lowerb=lowerb, upperb=upperb, hole_size=-1, resolution=resolution)
+        # filter small blobs
+        foreground = np.zeros_like(mask, dtype=np.uint8)
+        geocontours = find_geocontours(mask)
+        for geocontour in geocontours:
+            if geocontour.area(resolution=resolution) > min_area:
+                draw_geocontours(foreground, [geocontour])
+    else:
+        raise ValueError('mode must be either "bg" or "fg".')
+
     return foreground
 
 
@@ -421,7 +447,7 @@ def segment_foreground_contour(*args, **kwargs):
     return results
 
 
-def segment_foreground_wsi(slide, lowerb=None, upperb=None, min_area=5e5):
+def segment_foreground_wsi(slide, lowerb=None, upperb=None, min_area=5e5, mode='bg'):
     """
     segment the background in white color and return the foreground mask contours (geojson)
 
@@ -430,15 +456,9 @@ def segment_foreground_wsi(slide, lowerb=None, upperb=None, min_area=5e5):
     :param upperb:       inclusive upper bound array in HSV-space for background segmentation
     :param resolution:   pixel resolution in micron
     :param min_area:     minimum area of a tissue ROI [micro-meter squared]; smaller ROIs will be removed
-
+    :param mode:        'bg' for background segmentation or 'fg' for foreground segmentation
     :return foreground:  A list of GeoContours
     """
-    # extract background in white color
-    if lowerb is None:
-        lowerb = [0, 0, 230]
-    if upperb is None:
-        upperb = [180, 10, 255]
-
     # set downsample ratio
     downsample = 32
 
@@ -453,7 +473,8 @@ def segment_foreground_wsi(slide, lowerb=None, upperb=None, min_area=5e5):
                                              lowerb=lowerb,
                                              upperb=upperb,
                                              resolution=pixel_resolution,
-                                             min_area=min_area)
+                                             min_area=min_area,
+                                             mode=mode)
     # scale contours
     for geocontour in geocontours:
         geocontour.scale_up(ratio=downsample)
