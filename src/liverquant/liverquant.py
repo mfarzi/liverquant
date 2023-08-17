@@ -2,7 +2,9 @@ import numpy as np
 import cv2 as cv
 from cv2geojson import find_geocontours, draw_geocontours, export_annotations
 from functools import wraps, partial
-from .slidepatch import PatchGenerator, get_tile_image
+from .slidepatch import PatchGenerator, get_tile_image, get_random_blocks
+from .colorutil import get_ref_stian_vectors, estimate_mixing_matrix, get_maximum_stain_concentration, normalise_stains,\
+    estimate_mixing_matrix_wsi, get_maximum_stain_concentration_wsi, get_fibrosis_hsv_bounds
 from multiprocessing import Pool
 import time
 from scipy import ndimage as ndi
@@ -548,3 +550,155 @@ def filter_fat_globules(geocontours, x_range=None, y_range=None, solidity=(0.7, 
             other.append(geocontour)
 
     return globules, unknown, other
+
+
+def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=None, mixing_matrix=None,
+                             max_concentrations=None, ref_mixing_matrix=None, ref_max_concentrations=None,
+                             hole_size=0.0, blob_size=0.0, resolution=1.0):
+    """
+    Segment regions based on their color profile in HSV space
+
+    :param img:          A numpy array of input image tile in RGB space
+    :param mask:         A numpy array of desired ROIs [either 255 or 0] corresponding to img
+    :param stain:        VG or PSR or MTC
+    :param lowerb:       Inclusive lower bound array in HSV-space for color segmentation
+    :param upperb:       Inclusive upper bound array in HSV-space for color segmentation
+    :param mixing_matrix:
+    :param max_concentrations:
+    :param ref_max_concentrations:
+    :param ref_mixing_matrix:
+    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
+                         will be removed.
+    :param blob_size:
+    :param resolution:   Image pixel resolution in micron
+
+    :return geocontours: A list of cv2geojson.GeoContour objects representing color segmented ROIs
+    """
+    if mask is None:
+        mask = np.zeros(img.shape[:2], dtype=np.uint8)+255
+
+    # estimate input mixing_matrix
+    if mixing_matrix is None:
+        x = img[mask == 255, ]
+        mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode='SVD', alpha=1, beta=0.15)
+
+    # estimate input concentrations
+    if max_concentrations is None:
+        max_concentrations = get_maximum_stain_concentration(img, mixing_matrix)
+
+    # retrieve reference measurements
+    if ref_mixing_matrix is None:
+        ref_mixing_matrix = get_ref_stian_vectors(stain)[0]
+    if ref_max_concentrations is None:
+        ref_max_concentrations = get_ref_stian_vectors(stain)[1]
+
+    # retrieve lower and upper bounds
+    if lowerb is None:
+        lowerb = get_fibrosis_hsv_bounds(stain)[0]
+    if upperb is None:
+        upperb = get_fibrosis_hsv_bounds(stain)[1]
+
+    # normalise the image
+    scale = np.divide(ref_max_concentrations, max_concentrations)
+    img_normal = normalise_stains(img, mixing_matrix, ref_mixing_matrix, scale)
+
+    contours = segment_by_color_contour(img_normal,
+                                        mask=mask,
+                                        lowerb=lowerb,
+                                        upperb=upperb,
+                                        hole_size=hole_size,
+                                        resolution=resolution)
+    # filter small blob size
+    geocontours = [cnt for cnt in contours if cnt.area(resolution) > blob_size]
+
+    return geocontours
+
+
+def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None, mixing_matrix=None,
+                         max_concentrations=None, ref_mixing_matrix=None, ref_max_concentrations=None,
+                         hole_size=0.0, blob_size=0.0, tile_size=2048, downsample=2, cores_num=4):
+    """
+    segment fibrosis in liver tissue using color and morphological features by sweeping over the whole slide image
+    (WSI) tile by tile and return annotations (geojson)
+
+    :param slide:                An openslide object to the whole slide image
+    :param roi:                  A list of cv2geojson.GeoContours for the selected ROIs
+    :param stain
+    :param lowerb:               Inclusive lower bound array in HSV-space for color segmentation
+    :param upperb:               Inclusive upper bound array in HSV-space for color segmentation
+    :param mixing_matrix:
+    :param max_concentrations:
+    :param ref_max_concentrations:
+    :param ref_mixing_matrix:
+    :param tile_size:            The tile size to sweep the whole slide image
+    :param downsample:           Downsampling ratio as a power of two
+    :param cores_num:            Number of cores for parallel computation
+
+    :return cpa:                 The amount of collagen in the tissue represented in percent
+    :return geocontours:         List of cv2geojson.GeoContour geometries representing fat globules as Polygons
+    :return roi:                 list of cv2geojson.GeoContour geometries representing the foreground mask
+    """
+    if roi is None:
+        roi = segment_foreground_wsi(slide)
+
+    if mixing_matrix is None:
+        mixing_matrix = estimate_mixing_matrix_wsi(slide,
+                                                   stain=stain,
+                                                   mode='SVD',
+                                                   roi=roi,
+                                                   downsample=downsample,
+                                                   blocks_num=50)
+    if max_concentrations is None:
+        max_concentrations = get_maximum_stain_concentration_wsi(slide,
+                                                                 mixing_matrix=mixing_matrix,
+                                                                 roi=roi,
+                                                                 downsample=downsample,
+                                                                 blocks_num=50)
+
+    # retrieve reference measurements
+    if ref_mixing_matrix is None:
+        ref_mixing_matrix = get_ref_stian_vectors(stain)[0]
+    if ref_max_concentrations is None:
+        ref_max_concentrations = get_ref_stian_vectors(stain)[1]
+    if lowerb is None:
+        lowerb = get_fibrosis_hsv_bounds(stain)[0]
+    if upperb is None:
+        upperb = get_fibrosis_hsv_bounds(stain)[1]
+
+    # extract image tiles
+    tiles = PatchGenerator(slide, tile_size=tile_size, overlap=0, downsample=downsample, roi=roi)
+
+    pixel_resolution = float(slide.properties['openslide.mpp-x'])
+
+    print(f'Start parallel computation using {cores_num} cores...')
+    with Pool(cores_num) as pool:
+        partial_segment_fibrosis = partial(segment_fibrosis_contour,
+                                           stain=stain,
+                                           lowerb=lowerb,
+                                           upperb=upperb,
+                                           mixing_matrix=mixing_matrix,
+                                           max_concentrations=max_concentrations,
+                                           ref_mixing_matrix=ref_mixing_matrix,
+                                           ref_max_concentrations=ref_max_concentrations,
+                                           hole_size=hole_size,
+                                           blob_size=blob_size,
+                                           resolution=pixel_resolution)
+        results = pool.starmap(partial_segment_fibrosis, tiles)
+    pool.close()
+    print('parallel coding is completed.')
+
+    # pooling results and scaling contours
+    geocontours = []
+    for index, contours in enumerate(results):
+        offset = tiles.address[index]
+        # scale the contours
+        for contour in contours:
+            contour.scale_up(ratio=downsample, offset=offset)
+        geocontours.extend(contours)
+
+    # estimate collagen proportionate area (cpa)
+    area_tissue = np.sum([cnt.area(pixel_resolution) for cnt in roi])
+    area_fibrosis = np.sum([cnt.area(pixel_resolution) for cnt in geocontours])
+    cpa = np.round(area_fibrosis / area_tissue * 100, 2)
+
+    return cpa, geocontours, roi

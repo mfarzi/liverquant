@@ -11,6 +11,8 @@ import numpy as np
 import cv2 as cv
 from matplotlib import pyplot as plt
 from sklearn.decomposition import NMF
+import random
+from .slidepatch import get_random_blocks
 
 
 def get_ref_stian_vectors(stain='HE'):
@@ -23,28 +25,51 @@ def get_ref_stian_vectors(stain='HE'):
         max_concentrations:
     """
     if stain == 'HE':
-        stain_vectors = np.array([[0.69652276,  0.32759918,  0.59774075],
-                                  [0.70660026,  0.70872559, -0.66760321],
-                                  [0.12478829,  0.62480942,  0.44386029]])
+        stain_vectors = np.array([[0.69652276, 0.32759918, 0.59774075],
+                                  [0.70660026, 0.70872559, -0.66760321],
+                                  [0.12478829, 0.62480942, 0.44386029]])
         max_concentrations = np.array([1.49931920, 1.36812984, 0.16090817])
     elif stain == 'PSR':
-        stain_vectors = np.array([[0.29700838,  0.18553988,  0.95237073],
-                                  [0.77096590,  0.23285926, -0.28187702],
-                                  [0.56338051,  0.95464733, -0.11634148]])
+        stain_vectors = np.array([[0.29700838, 0.18553988, 0.95237073],
+                                  [0.77096590, 0.23285926, -0.28187702],
+                                  [0.56338051, 0.95464733, -0.11634148]])
         max_concentrations = np.array([1.82058375, 1.23927257, 0.31724941])
     elif stain == 'MTC':
-        stain_vectors = np.array([[0.73060417,  0.22375230,  0.46580686],
-                                  [0.64489721,  0.67064406, -0.71097224],
-                                  [0.22433263,  0.70722801,  0.52682297]])
+        stain_vectors = np.array([[0.73060417, 0.22375230, 0.46580686],
+                                  [0.64489721, 0.67064406, -0.71097224],
+                                  [0.22433263, 0.70722801, 0.52682297]])
         max_concentrations = np.array([1.53293709, 1.51704764, 0.12945636])
     elif stain == 'VG':
-        stain_vectors = np.array([[0.52941714,  0.12985407,  0.75251392],
-                                  [0.71697463,  0.35222347, -0.64369966],
-                                  [0.45350289,  0.92686382,  0.13918888]])
+        stain_vectors = np.array([[0.52941714, 0.12985407, 0.75251392],
+                                  [0.71697463, 0.35222347, -0.64369966],
+                                  [0.45350289, 0.92686382, 0.13918888]])
         max_concentrations = np.array([1.55067450, 1.20670689, 0.15414170])
     else:
         raise ValueError('Stain must be either "HE", "PSR", "MTC" or "VG".')
     return stain_vectors, max_concentrations
+
+
+def get_fibrosis_hsv_bounds(stain='VG'):
+    """
+    Return the reference stain vectors
+    Args:
+        stain: {str} either 'HE', 'VG', 'PSR', or 'MTC'
+    Returns:
+        stain_vectors:
+        max_concentrations:
+    """
+    if stain == 'VG':
+        lowerb = [-15, 50, 100]
+        upperb = [10, 255, 255]
+    elif stain == 'PSR':
+        lowerb = [-12, 50, 100]
+        upperb = [12, 255, 255]
+    elif stain == 'MTC':
+        lowerb = [100, 50, 100]
+        upperb = [140, 255, 255]
+    else:
+        raise ValueError('Stain must be either "PSR", "MTC" or "VG".')
+    return lowerb, upperb
 
 
 def compute_optical_density(img):
@@ -213,6 +238,28 @@ def get_maximum_stain_concentration(img, mixing_matrix):
     return max_concentrations
 
 
+def estimate_mixing_matrix_wsi(slide, stain=None, mode='SVD', alpha=1, beta=0.15, roi=None, downsample=1, blocks_num=50):
+    img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
+    x = img[mask == 255, ]
+    mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode=mode, alpha=alpha, beta=beta)
+    return mixing_matrix
+
+
+def get_maximum_stain_concentration_wsi(slide, mixing_matrix, roi=None, downsample=1, blocks_num=50):
+    """
+    :param img_vectorised:
+    :param stain_vectors:
+    :param max_intensity:
+
+    :return max_concentrations: numpy array of 2x1
+    """
+    img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
+    concentrations = estimate_stain_concentration(img, mixing_matrix)
+    concentrations = concentrations.reshape(-1, 3)
+    max_concentrations = np.percentile(concentrations, 99, axis=0)
+    return max_concentrations
+
+
 if __name__ == '__main__':
     img_a = cv.imread('C:\\Users\\mfarzi\\Documents\\mycodes\\liverquant\\example\\normalisation\\MTC_tile_01.jpg')
     img_a = cv.cvtColor(img_a, cv.COLOR_BGR2RGB)
@@ -250,7 +297,7 @@ if __name__ == '__main__':
     plt.subplot(1, 4, 4)
     plt.imshow(m3)
 
-    scale = scale_a/scale_b
+    scale = scale_a / scale_b
     # scale[2] = 0
     img_c = normalise_stains(img_b, Mb, Ma, scale)
     plt.figure()

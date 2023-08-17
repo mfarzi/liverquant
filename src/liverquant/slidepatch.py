@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 from cv2geojson import draw_geocontours
+import random
 
 
 class PatchGenerator:
@@ -145,3 +146,31 @@ def get_tile_mask(roi=None, address=(0, 0), tile_size=(1024, 1024), downsample=1
         # roi_scaled = [contour.scale_down(ratio=downsample, offset=address) for contour in roi]
         draw_geocontours(mask, roi, scale=downsample, offset=address, mode='imagej')
     return mask
+
+
+def get_random_blocks(slide, blocks_num=50, roi=None, downsample=1):
+    tiles = extract_tiles(((0, 0), slide.dimensions),
+                          tile_size=(512, 512),
+                          overlap=(0, 0),
+                          downsample=downsample,
+                          roi=roi,
+                          ensure_fit=True)
+
+    samples_num = np.min([blocks_num, len(tiles)])
+    tiles_random = random.sample(tiles, samples_num)
+
+    img = np.zeros((512, 0, 3), dtype=np.uint8)
+    mask = np.zeros((512, 0), dtype=np.uint8)
+    for address in tiles_random:
+        tile = get_tile_image(slide,
+                             address=address[0],
+                             tile_size=512,
+                             downsample=downsample)
+        img = np.concatenate((img, tile), axis=1)
+        tile_mask = get_tile_mask(roi,
+                                  address=address[0],
+                                  tile_size=512,
+                                  downsample=downsample)
+        mask = np.concatenate((mask, tile_mask), axis=1)
+
+    return img, mask
