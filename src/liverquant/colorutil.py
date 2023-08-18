@@ -245,7 +245,7 @@ def estimate_mixing_matrix_wsi(slide, stain=None, mode='SVD', alpha=1, beta=0.15
     return mixing_matrix
 
 
-def get_maximum_stain_concentration_wsi(slide, mixing_matrix, roi=None, downsample=1, blocks_num=50):
+def get_maximum_stain_concentration_wsi(slide, mixing_matrix, roi=None, downsample=1, blocks_num=50, q=99):
     """
     :param img_vectorised:
     :param stain_vectors:
@@ -256,7 +256,7 @@ def get_maximum_stain_concentration_wsi(slide, mixing_matrix, roi=None, downsamp
     img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
     concentrations = estimate_stain_concentration(img, mixing_matrix)
     concentrations = concentrations.reshape(-1, 3)
-    max_concentrations = np.percentile(concentrations, 99, axis=0)
+    max_concentrations = np.percentile(concentrations, q, axis=0)
     return max_concentrations
 
 
