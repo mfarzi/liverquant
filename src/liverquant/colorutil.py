@@ -169,7 +169,7 @@ def estimate_stain_concentration(img, mixing_matrix):
     optical_density = compute_optical_density(img_vectorised)
     concentration = np.linalg.lstsq(mixing_matrix, np.transpose(optical_density), rcond=None)[0]
     concentration = np.transpose(concentration)
-    concentration = concentration.reshape(img.shape)
+    concentration = concentration.reshape([img.shape[0], img.shape[1], mixing_matrix.shape[1]])
     return concentration
 
 
@@ -214,7 +214,7 @@ def normalise_stains(img, mixing_matrix, mixing_matrix_ref=None, scale=(1.0, 1.0
         mixing_matrix_ref = mixing_matrix
     concentrations = estimate_stain_concentration(img, mixing_matrix)
 
-    concentrations_vectorised = concentrations.reshape(-1, 3)
+    concentrations_vectorised = concentrations.reshape(-1, mixing_matrix.shape[1])
     concentrations_normalised = np.multiply(concentrations_vectorised, scale)
 
     img_normal = 255 * np.exp(-mixing_matrix_ref.dot(concentrations_normalised.T))
