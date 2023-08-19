@@ -553,8 +553,7 @@ def filter_fat_globules(geocontours, x_range=None, y_range=None, solidity=(0.7, 
 
 
 def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=None, mixing_matrix=None,
-                             max_concentrations=None, ref_mixing_matrix=None, ref_max_concentrations=None,
-                             hole_size=0.0, blob_size=0.0, resolution=1.0):
+                             ref_mixing_matrix=None, scale=None, hole_size=0.0, blob_size=0.0, resolution=1.0):
     """
     Segment regions based on their color profile in HSV space
 
@@ -564,9 +563,8 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
     :param lowerb:       Inclusive lower bound array in HSV-space for color segmentation
     :param upperb:       Inclusive upper bound array in HSV-space for color segmentation
     :param mixing_matrix:
-    :param max_concentrations:
-    :param ref_max_concentrations:
     :param ref_mixing_matrix:
+    :param scale:
     :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
                          will be removed.
     :param blob_size:
@@ -582,15 +580,11 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
         x = img[mask == 255, ]
         mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode='SVD', alpha=1, beta=0.15)
 
-    # estimate input concentrations
-    if max_concentrations is None:
-        max_concentrations = get_maximum_stain_concentration(img, mixing_matrix)
-
     # retrieve reference measurements
     if ref_mixing_matrix is None:
         ref_mixing_matrix = get_ref_stian_vectors(stain)[0]
-    if ref_max_concentrations is None:
-        ref_max_concentrations = get_ref_stian_vectors(stain)[1]
+    if scale is None:
+        scale = (1, 1, 0)
 
     # retrieve lower and upper bounds
     if lowerb is None:
@@ -599,7 +593,6 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
         upperb = get_fibrosis_hsv_bounds(stain)[1]
 
     # normalise the image
-    scale = np.divide(ref_max_concentrations, max_concentrations)
     img_normal = normalise_stains(img, mixing_matrix, ref_mixing_matrix, scale)
 
     contours = segment_by_color_contour(img_normal,
@@ -615,8 +608,8 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
 
 
 def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None, mixing_matrix=None,
-                         max_concentrations=None, ref_mixing_matrix=None, ref_max_concentrations=None,
-                         hole_size=0.0, blob_size=0.0, tile_size=2048, downsample=2, cores_num=4):
+                         ref_mixing_matrix=None, scale=None, hole_size=0.0, blob_size=0.0, tile_size=2048,
+                         downsample=2, cores_num=4):
     """
     segment fibrosis in liver tissue using color and morphological features by sweeping over the whole slide image
     (WSI) tile by tile and return annotations (geojson)
@@ -627,8 +620,6 @@ def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None,
     :param lowerb:               Inclusive lower bound array in HSV-space for color segmentation
     :param upperb:               Inclusive upper bound array in HSV-space for color segmentation
     :param mixing_matrix:
-    :param max_concentrations:
-    :param ref_max_concentrations:
     :param ref_mixing_matrix:
     :param tile_size:            The tile size to sweep the whole slide image
     :param downsample:           Downsampling ratio as a power of two
@@ -648,18 +639,12 @@ def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None,
                                                    roi=roi,
                                                    downsample=downsample,
                                                    blocks_num=50)
-    if max_concentrations is None:
-        max_concentrations = get_maximum_stain_concentration_wsi(slide,
-                                                                 mixing_matrix=mixing_matrix,
-                                                                 roi=roi,
-                                                                 downsample=downsample,
-                                                                 blocks_num=50)
 
     # retrieve reference measurements
     if ref_mixing_matrix is None:
         ref_mixing_matrix = get_ref_stian_vectors(stain)[0]
-    if ref_max_concentrations is None:
-        ref_max_concentrations = get_ref_stian_vectors(stain)[1]
+    if scale is None:
+        scale = (1, 1, 0)
     if lowerb is None:
         lowerb = get_fibrosis_hsv_bounds(stain)[0]
     if upperb is None:
@@ -677,9 +662,8 @@ def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None,
                                            lowerb=lowerb,
                                            upperb=upperb,
                                            mixing_matrix=mixing_matrix,
-                                           max_concentrations=max_concentrations,
                                            ref_mixing_matrix=ref_mixing_matrix,
-                                           ref_max_concentrations=ref_max_concentrations,
+                                           scale=scale,
                                            hole_size=hole_size,
                                            blob_size=blob_size,
                                            resolution=pixel_resolution)
