@@ -553,7 +553,7 @@ def filter_fat_globules(geocontours, x_range=None, y_range=None, solidity=(0.7, 
 
 
 def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=None, mixing_matrix=None,
-                             ref_mixing_matrix=None, scale=None, hole_size=0.0, blob_size=0.0, resolution=1.0):
+                             ref_mixing_matrix=None, scale=(1, 1, 0), hole_size=0.0, blob_size=0.0, resolution=1.0):
     """
     Segment regions based on their color profile in HSV space
 
@@ -575,6 +575,12 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
     if mask is None:
         mask = np.zeros(img.shape[:2], dtype=np.uint8)+255
 
+    # retrieve lower and upper bounds
+    if lowerb is None:
+        lowerb = get_fibrosis_hsv_bounds(stain)[0]
+    if upperb is None:
+        upperb = get_fibrosis_hsv_bounds(stain)[1]
+
     # estimate input mixing_matrix
     if mixing_matrix is None:
         x = img[mask == 255, ]
@@ -582,18 +588,14 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
 
     # retrieve reference measurements
     if ref_mixing_matrix is None:
-        ref_mixing_matrix = get_ref_stian_vectors(stain)[0]
-    if scale is None:
-        scale = (1, 1, 0)
-
-    # retrieve lower and upper bounds
-    if lowerb is None:
-        lowerb = get_fibrosis_hsv_bounds(stain)[0]
-    if upperb is None:
-        upperb = get_fibrosis_hsv_bounds(stain)[1]
-
-    # normalise the image
-    img_normal = normalise_stains(img, mixing_matrix, ref_mixing_matrix, scale)
+        # no image normalisation
+        img_normal = img
+    else:
+        if mixing_matrix is None:
+            x = img[mask == 255,]
+            mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode='SVD', alpha=1, beta=0.15)
+        # normalise the image
+        img_normal = normalise_stains(img, mixing_matrix, ref_mixing_matrix, scale)
 
     contours = segment_by_color_contour(img_normal,
                                         mask=mask,
@@ -607,9 +609,8 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
     return geocontours
 
 
-def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None, mixing_matrix=None,
-                         ref_mixing_matrix=None, scale=None, hole_size=0.0, blob_size=0.0, tile_size=2048,
-                         downsample=2, cores_num=4):
+def segment_fibrosis_wsi(slide, stain, roi=None, lowerb=None, upperb=None, ref_mixing_matrix=None, scale=None,
+                         hole_size=0.0, blob_size=0.0, tile_size=2048, downsample=8, cores_num=4):
     """
     segment fibrosis in liver tissue using color and morphological features by sweeping over the whole slide image
     (WSI) tile by tile and return annotations (geojson)
@@ -633,16 +634,19 @@ def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None,
         roi = segment_foreground_wsi(slide)
 
     if mixing_matrix is None:
+
+
+    # retrieve reference measurements
+    if ref_mixing_matrix is None:
+        # no normalisation
+        mixing_matrix = None
+    else:
         mixing_matrix = estimate_mixing_matrix_wsi(slide,
                                                    stain=stain,
                                                    mode='SVD',
                                                    roi=roi,
                                                    downsample=downsample,
                                                    blocks_num=50)
-
-    # retrieve reference measurements
-    if ref_mixing_matrix is None:
-        ref_mixing_matrix = get_ref_stian_vectors(stain)[0]
     if scale is None:
         scale = (1, 1, 0)
     if lowerb is None:
@@ -686,3 +690,9 @@ def segment_fibrosis_wsi(slide, roi=None, stain=None,  lowerb=None, upperb=None,
     cpa = np.round(area_fibrosis / area_tissue * 100, 2)
 
     return cpa, geocontours, roi
+
+@get_mask_decorator
+def segment_fibrosis(*args, **kwargs):
+    # wrapper function for detect_fat_globules
+    result = segment_fibrosis_contour(*args, **kwargs)
+    return result
