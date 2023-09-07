@@ -223,7 +223,7 @@ def normalise_stains(img, mixing_matrix, mixing_matrix_ref=None, scale=(1.0, 1.0
     return img_normal
 
 
-def get_maximum_stain_concentration(img, mixing_matrix):
+def get_maximum_stain_concentration(img, mask=None, mixing_matrix=None, q=99):
     """
     :param img_vectorised:
     :param stain_vectors:
@@ -232,8 +232,25 @@ def get_maximum_stain_concentration(img, mixing_matrix):
     :return max_concentrations: numpy array of 2x1
     """
     concentrations = estimate_stain_concentration(img, mixing_matrix)
-    concentrations = concentrations.reshape(-1, 3)
-    max_concentrations = np.percentile(concentrations, 99, axis=0)
+
+    c1mask = concentrations[:, :, 0] > concentrations[:, :, 1]
+    c1mask = c1mask.astype(np.uint8) * 255
+    if mask is not None:
+        c1mask = cv.bitwise_and(c1mask, mask)
+    c1max = np.percentile(concentrations[c1mask == 255, 0], q)
+
+    c2mask = concentrations[:, :, 1] > concentrations[:, :, 0]
+    c2mask = c2mask.astype(np.uint8) * 255
+    if mask is not None:
+        c2mask = cv.bitwise_and(c2mask, mask)
+    c2max = np.percentile(concentrations[c2mask == 255, 1], q)
+
+    if mask is not None:
+        c3max = np.percentile(concentrations[mask == 255, 2], q)
+    else:
+        c3max = np.percentile(concentrations.reshape(-1, 1), q)
+    c3max = np.max([0, c3max])
+    max_concentrations = np.array([c1max, c2max, c3max])
 
     return max_concentrations
 
@@ -254,9 +271,7 @@ def get_maximum_stain_concentration_wsi(slide, mixing_matrix, roi=None, downsamp
     :return max_concentrations: numpy array of 2x1
     """
     img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
-    concentrations = estimate_stain_concentration(img, mixing_matrix)
-    concentrations = concentrations.reshape(-1, 3)
-    max_concentrations = np.percentile(concentrations, q, axis=0)
+    max_concentrations = get_maximum_stain_concentration(img, mask=mask, mixing_matrix=mixing_matrix, q=q)
     return max_concentrations
 
 

@@ -104,14 +104,16 @@ def get_tile_image(slide, address, tile_size, downsample=1):
         tile_size = (tile_size, tile_size)
 
     # find the best level to read the image
-    level = slide.get_best_level_for_downsample(downsample)
+    level_downsamples = np.rint(slide.level_downsamples)
+    level = np.where(level_downsamples <= downsample)[0][-1]
+    # level = slide.get_best_level_for_downsample(downsample)
 
     # find the downsample ratio at the best level
-    downsample_ratio = int(downsample/np.rint(slide.level_downsamples[level]))
+    downsample_ratio = downsample/level_downsamples[level]
 
     # find the tile_size at the best level
-    width = tile_size[0] * downsample_ratio
-    height = tile_size[1] * downsample_ratio
+    width = int(tile_size[0] * downsample_ratio)
+    height = int(tile_size[1] * downsample_ratio)
 
     # read the image tile
     tile = slide.read_region(address, level, (width, height))
@@ -148,29 +150,38 @@ def get_tile_mask(roi=None, address=(0, 0), tile_size=(1024, 1024), downsample=1
     return mask
 
 
-def get_random_blocks(slide, blocks_num=50, roi=None, downsample=1):
+def get_random_blocks(slide, blocks_num=50, roi=None, downsample=1, block_size=1024):
     tiles = extract_tiles(((0, 0), slide.dimensions),
-                          tile_size=(512, 512),
+                          tile_size=(block_size, block_size),
                           overlap=(0, 0),
                           downsample=downsample,
                           roi=roi,
-                          ensure_fit=True)
+                          ensure_fit=False)
 
     samples_num = np.min([blocks_num, len(tiles)])
     tiles_random = random.sample(tiles, samples_num)
 
-    img = np.zeros((512, 0, 3), dtype=np.uint8)
-    mask = np.zeros((512, 0), dtype=np.uint8)
+    img = np.zeros((block_size, 0, 3), dtype=np.uint8)
+    mask = np.zeros((block_size, 0), dtype=np.uint8)
     for address in tiles_random:
         tile = get_tile_image(slide,
                              address=address[0],
-                             tile_size=512,
+                             tile_size=(block_size, block_size),
                              downsample=downsample)
         img = np.concatenate((img, tile), axis=1)
         tile_mask = get_tile_mask(roi,
                                   address=address[0],
-                                  tile_size=512,
+                                  tile_size=block_size,
                                   downsample=downsample)
         mask = np.concatenate((mask, tile_mask), axis=1)
 
     return img, mask
+
+
+def get_thumbnail(slide, downsample=32):
+    # generate thumbnail image
+    cols_num, rows_num = slide.dimensions
+    cols_num = int(cols_num / downsample)
+    rows_num = int(rows_num / downsample)
+    img = get_tile_image(slide, (0, 0), (cols_num, rows_num), downsample)
+    return img

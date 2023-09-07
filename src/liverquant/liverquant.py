@@ -10,6 +10,7 @@ import time
 from scipy import ndimage as ndi
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
+from sklearn.mixture import GaussianMixture
 
 
 def get_contours_decorator(get_mask):
@@ -553,7 +554,7 @@ def filter_fat_globules(geocontours, x_range=None, y_range=None, solidity=(0.7, 
 
 
 def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=None, mixing_matrix=None,
-                             ref_mixing_matrix=None, scale=(1, 1, 0), hole_size=0.0, blob_size=0.0, resolution=1.0):
+                             ref_mixing_matrix=None, scale=None, hole_size=0.0, blob_size=0.0, resolution=1.0):
     """
     Segment regions based on their color profile in HSV space
 
@@ -575,16 +576,14 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
     if mask is None:
         mask = np.zeros(img.shape[:2], dtype=np.uint8)+255
 
+    if scale is None:
+        scale = (1, 1, 0)
+
     # retrieve lower and upper bounds
     if lowerb is None:
         lowerb = get_fibrosis_hsv_bounds(stain)[0]
     if upperb is None:
         upperb = get_fibrosis_hsv_bounds(stain)[1]
-
-    # estimate input mixing_matrix
-    if mixing_matrix is None:
-        x = img[mask == 255, ]
-        mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode='SVD', alpha=1, beta=0.15)
 
     # retrieve reference measurements
     if ref_mixing_matrix is None:
@@ -595,7 +594,7 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
             x = img[mask == 255,]
             mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode='SVD', alpha=1, beta=0.15)
         # normalise the image
-        img_normal = normalise_stains(img, mixing_matrix, ref_mixing_matrix, scale)
+        img_normal = normalise_stains(img, mixing_matrix=mixing_matrix, mixing_matrix_ref=ref_mixing_matrix, scale=scale)
 
     contours = segment_by_color_contour(img_normal,
                                         mask=mask,
@@ -609,8 +608,8 @@ def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=Non
     return geocontours
 
 
-def segment_fibrosis_wsi(slide, stain, roi=None, lowerb=None, upperb=None, ref_mixing_matrix=None, scale=None,
-                         hole_size=0.0, blob_size=0.0, tile_size=2048, downsample=8, cores_num=4):
+def segment_fibrosis_wsi(slide, stain, roi=None, lowerb=None, upperb=None, mixing_matrix=None, ref_mixing_matrix=None,
+                         scale=None, hole_size=0.0, blob_size=0.0, tile_size=2048, downsample=8, cores_num=4):
     """
     segment fibrosis in liver tissue using color and morphological features by sweeping over the whole slide image
     (WSI) tile by tile and return annotations (geojson)
@@ -633,27 +632,6 @@ def segment_fibrosis_wsi(slide, stain, roi=None, lowerb=None, upperb=None, ref_m
     if roi is None:
         roi = segment_foreground_wsi(slide)
 
-    if mixing_matrix is None:
-
-
-    # retrieve reference measurements
-    if ref_mixing_matrix is None:
-        # no normalisation
-        mixing_matrix = None
-    else:
-        mixing_matrix = estimate_mixing_matrix_wsi(slide,
-                                                   stain=stain,
-                                                   mode='SVD',
-                                                   roi=roi,
-                                                   downsample=downsample,
-                                                   blocks_num=50)
-    if scale is None:
-        scale = (1, 1, 0)
-    if lowerb is None:
-        lowerb = get_fibrosis_hsv_bounds(stain)[0]
-    if upperb is None:
-        upperb = get_fibrosis_hsv_bounds(stain)[1]
-
     # extract image tiles
     tiles = PatchGenerator(slide, tile_size=tile_size, overlap=0, downsample=downsample, roi=roi)
 
@@ -670,7 +648,7 @@ def segment_fibrosis_wsi(slide, stain, roi=None, lowerb=None, upperb=None, ref_m
                                            scale=scale,
                                            hole_size=hole_size,
                                            blob_size=blob_size,
-                                           resolution=pixel_resolution)
+                                           resolution=pixel_resolution*downsample)
         results = pool.starmap(partial_segment_fibrosis, tiles)
     pool.close()
     print('parallel coding is completed.')
@@ -696,3 +674,88 @@ def segment_fibrosis(*args, **kwargs):
     # wrapper function for detect_fat_globules
     result = segment_fibrosis_contour(*args, **kwargs)
     return result
+
+
+def get_hsv_bounds(img, mask=None, stain='VG', outlier_rate=2.5, beta=10, means_init=None, n_iter=1, verbose=False):
+    # extract white regions and exclude them
+    mask_white = segment_by_color(img, mask, lowerb=[0, 0, 200], upperb=[180, beta, 255])
+    mask_tissue = cv.bitwise_not(mask_white)
+    if mask is not None:
+        mask_tissue = cv.bitwise_and(mask_tissue, mask)
+
+    # convert to HSV
+    img_hsv = cv.cvtColor(img, cv.COLOR_RGB2HSV)
+    h, s, v = cv.split(img_hsv)
+    hue = np.int32(h)
+    if stain in ['VG', 'PSR']:
+        hue[hue > 90] = hue[hue > 90] - 180
+    x = hue[mask_tissue == 255]
+
+    # remove outliers
+    q1 = np.quantile(x, 0.25)
+    q3 = np.quantile(x, 0.75)
+    iqr = q3 - q1
+
+    # estimate lower bound
+    lower_bound = np.percentile(x, outlier_rate)
+    lower_bound_range = np.array([q1 - 1.5 * iqr, q1 - 3 * iqr, q1 - 4.5 * iqr, q1 - 6 * iqr, q1 - 7.5 * iqr, q1 - 9 * iqr])
+    if np.any(lower_bound_range < lower_bound):
+        lower_bound = np.max(lower_bound_range[lower_bound_range < lower_bound])
+
+    # estimate upper bound
+    upper_bound = np.percentile(x, 100-outlier_rate)
+    upper_bound_range = np.array([q3 + 1.5 * iqr, q3 + 3 * iqr, q3 + 4.5 * iqr, q1 + 6 * iqr, q1 + 7.5 * iqr, q1 + 9 * iqr])
+    if np.any(upper_bound_range > upper_bound):
+        upper_bound = np.min(upper_bound_range[upper_bound_range > upper_bound])
+
+    bounds = [lower_bound, upper_bound]
+
+    # remove outliers
+    y = np.array([xi for xi in x if bounds[0] < xi < bounds[1]])
+    y = np.reshape(y, (-1, 1))
+
+    best_model = GaussianMixture(n_components=2, means_init=means_init)
+    best_model.fit(y)
+    loglikelihood = best_model.score(y)
+    for i in range(n_iter):
+        gmm = GaussianMixture(n_components=2, means_init=means_init)
+        gmm.fit(y)
+        score = gmm.score(y)
+        if score < loglikelihood:
+            best_model = gmm
+            loglikelihood = score
+        if verbose:
+            print(f'iteration {i}: loglikelihood = {score}')
+
+    # find threshold for prob = 0.5
+    xx = np.linspace(bounds[0], bounds[1], 1000)
+    probs = best_model.predict_proba(xx.reshape(-1, 1))
+    thresh = np.min(xx[np.where(np.abs(probs[:, 0] - 0.5) < 0.05)])
+
+    mu1, mu2 = best_model.means_.flatten()
+    sigma1, sigma2 = np.sqrt(best_model.covariances_).flatten()
+
+    if mu1 < mu2:
+        lowerb = [int(mu1 - 3 * sigma1), 50, 100]
+    else:
+        lowerb = [int(mu2 - 3 * sigma2), 50, 100]
+    upperb = [int(thresh), 255, 255]
+
+    if verbose:
+        print(f'best model: mu1 = {mu1}, mu2 = {mu2}, sigma1 = {sigma1}, sigma2 = {sigma2}, weights = {best_model.weights_}, bounds = {bounds}')
+    return lowerb, upperb
+
+
+def get_hsv_bounds_wsi(slide, roi=None, stain='VG', blocks_num=50, downsample=32, outlier_rate=2.5, beta=10,
+                       means_init=None, n_iter=1, verbose=False):
+    img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
+    lowerb, upperb = get_hsv_bounds(img,
+                                    mask=mask,
+                                    stain=stain,
+                                    outlier_rate=outlier_rate,
+                                    beta=beta,
+                                    means_init=means_init,
+                                    n_iter=n_iter,
+                                    verbose=verbose)
+    return lowerb, upperb
+
