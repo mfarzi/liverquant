@@ -66,6 +66,9 @@ def extract_tiles(frame_size, tile_size=(1024, 1024), overlap=(0, 0), downsample
     stride_x_downsample = stride_x * downsample
     stride_y_downsample = stride_y * downsample
 
+    # generate low-res mask
+    roi_mask = get_tile_mask(roi=roi, address=(col_offset, row_offset), tile_size=(col_max, row_max), downsample=32)
+
     if ensure_fit:
         col_max -= stride_x_downsample
         row_max -= stride_y_downsample
@@ -76,8 +79,10 @@ def extract_tiles(frame_size, tile_size=(1024, 1024), overlap=(0, 0), downsample
                 address.append([(col, row), (int((col-col_offset)/stride_x_downsample), int((row-row_offset)/stride_y_downsample))])
             else:
                 # check if this tile overlaps with the ROI
-                mask = get_tile_mask(roi, (col, row), tile_size, downsample)
-                if 255 in mask[overlap[1]:tile_size[1]-overlap[1], overlap[0]:tile_size[0]-overlap[0]]:
+                mask = roi_mask[int(row/32):int((row+tile_size[1])/32), int(col/32):int((col+tile_size[0])/32)]
+                # mask = get_tile_mask(roi, (col, row), tile_size, downsample)
+                # if 255 in mask[overlap[1]:tile_size[1]-overlap[1], overlap[0]:tile_size[0]-overlap[0]]:
+                if 255 in mask:
                     address.append([(col, row), (int((col-col_offset)/stride_x_downsample), int((row-row_offset)/stride_y_downsample))])
     return address
 
