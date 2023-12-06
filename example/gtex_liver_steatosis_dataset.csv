@@ -1,0 +1,110 @@
+Slide ID,Tissue,Subject ID,Sex,Age Bracket,Hardy Scale,Pathology Categories,Pathology Notes,Steatosis,SPA,Runtime
+GTEX-11EI6-0926,Liver,GTEX-11EI6,male,60-69,Slow death,"congestion, steatosis","2 pieces, moderate passive congestion; ~15-20% macrovesicular steatosis",1,1.84,256.28
+GTEX-11EMC-0326,Liver,GTEX-11EMC,female,60-69,Fast death - natural causes,"congestion, steatosis","2 pieces, moderate congestions; micro and macrovesicular steatosis in ~70% of parenchyma",3,2.23,321.54
+GTEX-11UD2-1626,Liver,GTEX-11UD2,male,50-59,Fast death - natural causes,steatosis,"2 pieces, diffuse macrovesicular steatosis involves ~80% of parenchyma",3,10.96,512.352
+GTEX-12WS9-2126,Liver,GTEX-12WS9,female,50-59,Intermediate death,"congestion, steatosis","2 pieces moderate congestion, ~10% microvesicular steatosis",1,0.13,201.026
+GTEX-12WSL-0226,Liver,GTEX-12WSL,male,50-59,Ventilator case,steatosis,2 pieces; 20% macrovesicular steatosis,1,1.75,193.051
+GTEX-13112-1426,Liver,GTEX-13112,male,50-59,Fast death - natural causes,steatosis,2 pieces; 5% macrovesicular steatosis,0,0.61,119.428
+GTEX-132AR-0426,Liver,GTEX-132AR,female,50-59,Ventilator case,"fibrosis, steatosis","2 pieces; many Mallory alcoholic hyalin bodies, bridging fibrosis, >90% macro and microsteatosis",3,18.08,282.327
+GTEX-1399R-1226,Liver,GTEX-1399R,male,30-39,Ventilator case,steatosis,2 pieces; 50% macrosteatosis,2,8.21,356.097
+GTEX-139TT-1226,Liver,GTEX-139TT,male,60-69,Fast death - natural causes,"congestion, steatosis",2 pieces; moderate central congestion; 5% macrovesicular steatosis,0,0.78,293.15
+GTEX-13IVO-1526,Liver,GTEX-13IVO,male,70-79,Slow death,"congestion, steatosis",2 pieces;10% macrovesicular steatosis; central congestion and degeneration,1,0.32,168.988
+GTEX-13NYB-1026,Liver,GTEX-13NYB,male,40-49,Fast death - natural causes,steatosis,"2 pieces, diffuse macrovesicular steatosis involves >80% parenchyma",3,11.35,413.83
+GTEX-13NYS-1226,Liver,GTEX-13NYS,male,60-69,Slow death,"cirrhosis, nodularity, steatosis","2 pieces; nodular cirrhosis, alcoholic hyalin (Mallory bodies) with 50% macrosteatosis",2,3.09,561.642
+GTEX-13NZ8-1826,Liver,GTEX-13NZ8,female,60-69,Slow death,steatosis,2 pieces; 10% macrovesicular steatosis,1,0.57,172.39
+GTEX-13NZ9-1326,Liver,GTEX-13NZ9,male,50-59,Ventilator case,steatosis,"2 pieces, micro (mainly) and macrovesicular steatosis involves ~70% parenchyma",3,1.01,227.535
+GTEX-13O1R-2026,Liver,GTEX-13O1R,male,60-69,Fast death - natural causes,steatosis,2 pieces; <5% macrovesicular steatosis,0,0.47,245.594
+GTEX-13O3Q-1026,Liver,GTEX-13O3Q,male,50-59,Fast death - natural causes,steatosis,2 pieces; <5% macrovesicular steatosis; no active or chronic lesions,0,0.31,422.18
+GTEX-13OVH-0926,Liver,GTEX-13OVH,male,70-79,Fast death - natural causes,steatosis,"2 pieces, ~5% macrovesicular steatosis",0,0.13,75.033
+GTEX-13OVL-0726,Liver,GTEX-13OVL,male,50-59,Fast death - natural causes,steatosis,2 fragmented pieces; 5% macrovesicular steatosis,0,0.44,397.609
+GTEX-13OW5-1226,Liver,GTEX-13OW5,male,60-69,Intermediate death,"fibrosis, hepatitis, steatosis","2 pieces, chronic steatohepatitis, macrovesicular steatosis is ~30% parenchyma; patchy early bridging fibrosis",1,3.03,193.924
+GTEX-13QJ3-2026,Liver,GTEX-13QJ3,male,50-59,Ventilator case,steatosis,2 pieces mild macrovesicular steatosis (10-20%),1,0.29,216.906
+GTEX-144GL-1426,Liver,GTEX-144GL,male,50-59,Fast death - natural causes,steatosis,2 pieces; 20% macrovesicular steatosis,1,1.95,100.103
+GTEX-145LU-1326,Liver,GTEX-145LU,male,50-59,Fast death - natural causes,steatosis,2 pieces; 10% macrovesicular steatosis,1,0.48,242.089
+GTEX-145MI-1226,Liver,GTEX-145MI,female,60-69,Fast death - natural causes,steatosis,2 pieces; 50% macrovesiculer steatosis,2,4.09,345.995
+GTEX-146FH-1526,Liver,GTEX-146FH,female,50-59,Ventilator case,"fibrosis, hepatitis, inflammation, steatosis","2 pieces; 80% macrovesicular steatosis, portal inflammation and bridging fibrosis  consistent with nonalcoholic steatohepatitis",3,14.43,291.112
+GTEX-14ASI-1626,Liver,GTEX-14ASI,male,60-69,Fast death - natural causes,"congestion, steatosis","2 pieces; 10% macrovesicular steatosis, moderate congestion",1,1.18,190.692
+GTEX-14C39-0426,Liver,GTEX-14C39,male,40-49,Fast death - natural causes,"necrosis, steatosis","2 pieces  massive central hemorrhagic necrosis/submassive hepatic necrosis, ~30% mascrovesicular steatosis",1,1.37,255.721
+GTEX-14PII-1926,Liver,GTEX-14PII,male,60-69,Slow death,"congestion, steatosis","2 pieces, marked mascrovesicular steatosis in ~50% parenchyma, centrilobular distribution; moderate passive congestion",2,6.91,219.593
+GTEX-15CHS-1426,Liver,GTEX-15CHS,male,50-59,Fast death - natural causes,steatosis,"2 pieces, ~10% macrovesicular steatosis",1,0.3,239.413
+GTEX-15D1Q-1426,Liver,GTEX-15D1Q,male,40-49,Fast death - natural causes,steatosis,2 pieces marked macrovesicular steatosis involves >90% of parenchyma,3,17.03,511.629
+GTEX-15D79-2326,Liver,GTEX-15D79,male,50-59,Fast death - natural causes,"fibrosis, steatosis",2 pieces; moderate (40%) macrovesicular steatosis; bridging fibrosis,2,8.6,264.778
+GTEX-15DCZ-1526,Liver,GTEX-15DCZ,female,20-29,Ventilator case,"congestion, steatosis","2 pieces, moderate congestions; macrovesicular steatosis in ~20% of parenchyma",1,0.14,208.991
+GTEX-15SZO-1226,Liver,GTEX-15SZO,male,50-59,Fast death - natural causes,steatosis,"2 pieces, diffuse macrovesicular steatosis, ~90% parenchymal involvement",3,19.75,278.173
+GTEX-16YQH-1126,Liver,GTEX-16YQH,male,30-39,Fast death - violent,steatosis,"2 pieces, ~5-10% steatosis, macro and microvesicular",1,1.01,165.73
+GTEX-17HGU-1826,Liver,GTEX-17HGU,male,50-59,Ventilator case,"congestion, steatosis",2 pieces; mild congestion; <5% macrovesicular steatosis,0,0.17,102.011
+GTEX-17HHY-2026,Liver,GTEX-17HHY,male,50-59,Fast death - natural causes,steatosis,2 pieces; prominent central macrovesicular steatosis: 20%,1,3.11,214.707
+GTEX-18A7A-1526,Liver,GTEX-18A7A,female,50-59,Fast death - natural causes,steatosis,2 pieces; <5% macrovesicular steatosis; no obvious iron accumulation [thalassemia history],0,0.15,175.899
+GTEX-19HZE-1926,Liver,GTEX-19HZE,female,70-79,Intermediate death,steatosis,2 pieces; focal macrovesicular steatosis <5%,0,0.13,195.726
+GTEX-1A32A-0826,Liver,GTEX-1A32A,female,50-59,Fast death - natural causes,steatosis,2 pieces; moderate [40%] macrovesicular steatosis mainly in central zones,2,2.01,178.569
+GTEX-1A3MW-1826,Liver,GTEX-1A3MW,female,60-69,Slow death,"fibrosis, steatosis",2 pieces; severe macrovesicular steatosis (80%) & fibrosis,3,5.22,268.747
+GTEX-1B933-1226,Liver,GTEX-1B933,female,50-59,Fast death - natural causes,steatosis,"2 pieces, diffuse macrovesicular steatosis involves ~70% of parenchyma",3,5.62,397.76
+GTEX-1C6VR-1026,Liver,GTEX-1C6VR,male,60-69,Fast death - natural causes,steatosis,"2 pieces, trace macrovesicular steatosis (~10% of parenchyma)",1,0.52,126.258
+GTEX-1E1VI-1926,Liver,GTEX-1E1VI,male,50-59,Fast death - natural causes,steatosis,2 pieces; diffuse macrovesicular and steatosis (80% fat),3,13.68,549.44
+GTEX-1E2YA-1226,Liver,GTEX-1E2YA,male,50-59,Fast death - natural causes,"congestion, hemorrhage, infarction, steatosis","2 pieces, marked passive congestion, approaching hemorrhagic infarcts, rep delineated; macrovesicular steatosis involves ~20% of parenchyma",1,1.09,296.307
+GTEX-1EH9U-1126,Liver,GTEX-1EH9U,male,60-69,Slow death,steatosis,2 pieces; 5% macrosteatosis,0,0.42,185.064
+GTEX-1EU9M-0826,Liver,GTEX-1EU9M,male,60-69,Fast death - natural causes,steatosis,"2 pieces, patchy macrovesicular steatosis involves ~20% of parenchyma",1,1.47,221.04
+GTEX-1F88F-0626,Liver,GTEX-1F88F,female,60-69,Fast death - natural causes,steatosis,2 pieces; 5% macrovesicular steatosis,0,1.02,268.294
+GTEX-1GF9V-1226,Liver,GTEX-1GF9V,male,60-69,Fast death - natural causes,"congestion, steatosis","2 pieces, ~50% macrovesicular steatosis; moderate passive congestion",2,3.47,609.099
+GTEX-1GF9X-0426,Liver,GTEX-1GF9X,female,40-49,Ventilator case,steatosis,2 pieces; severe (>75%) macrovesicular steatosis,3,10.45,133.085
+GTEX-1GMRU-0926,Liver,GTEX-1GMRU,male,50-59,Fast death - natural causes,steatosis,"2 pieces, diffuse macrovesicular steatosis involves ~80% of parenchyma",3,17.44,358.907
+GTEX-1GN2E-0926,Liver,GTEX-1GN2E,male,60-69,Fast death - natural causes,steatosis,"2 pieces, centrilobular macrovesicular steatosis involves ~20-30% of parenchyma",1,1.11,390.364
+GTEX-1GN73-1126,Liver,GTEX-1GN73,male,60-69,Fast death - natural causes,"hemorrhage, steatosis",2 pieces; <5% macrovesicular steatosis; focal hemorrhages,0,0.23,143.766
+GTEX-1GTWX-1126,Liver,GTEX-1GTWX,male,60-69,Fast death - natural causes,"congestion, steatosis","2 pieces, diffuse macrovesicular steatosis involves ~60% of parenchyma; moderate passive congestion",2,6.29,199.741
+GTEX-1GZ4I-1526,Liver,GTEX-1GZ4I,male,50-59,Fast death - natural causes,"congestion, steatosis",2 pieces; minimal central congestion; 10% macrovesicular steatosis,1,0.63,547.567
+GTEX-1H3NZ-1726,Liver,GTEX-1H3NZ,male,60-69,Slow death,"congestion, fibrosis, steatosis",2 pieces; bridging fibrosis; moderate venous & centrolobular congestion; 10% macrovesicular steatosis,1,0.65,404.383
+GTEX-1HCVE-1526,Liver,GTEX-1HCVE,male,50-59,Slow death,"congestion, steatosis","2 pieces, marked passive congestion; moderate macrovesicular steatosis ( 40-50% of parenchyma)",2,3.47,324.259
+GTEX-1HT8W-0826,Liver,GTEX-1HT8W,male,30-39,Fast death - natural causes,"fibrosis, steatosis","2 pieces, moderate macrovesicular steatosis involving ~80% of parenchyma; severe bridging fibrosis",3,3.23,405.739
+GTEX-1I1GP-1526,Liver,GTEX-1I1GP,male,50-59,Fast death - natural causes,"congestion, steatosis","2 pieces, macrovesicular steatosis in ~25% of parenchyma, mild/moderate passive congestion",1,0.69,203.197
+GTEX-1I1GV-1026,Liver,GTEX-1I1GV,male,60-69,Fast death - natural causes,"congestion, steatosis","2 pieces, macrovesicular steatosis involves ~60-70% of parenchyma; moderate passive congestion",3,6.71,489.466
+GTEX-1ICLZ-1526,Liver,GTEX-1ICLZ,male,60-69,Intermediate death,"cirrhosis, fibrosis, steatosis",2 pieces; severe (50%) perilobular fibrosis consistent with cardiac cirrhosis; moderate macrovesicular steatosis,2,0.57,497.2
+GTEX-1IDJV-1626,Liver,GTEX-1IDJV,male,60-69,Intermediate death,"congestion, steatosis","2 pieces, macrovesicular steatosis invoves ~40% of parenchyma; moderate passive congestion.",2,3.54,415.07
+GTEX-1IKJJ-1526,Liver,GTEX-1IKJJ,male,60-69,Fast death - natural causes,"congestion, steatosis","2 pieces, macro and microvesicular steatosis involves ~50% of parenchyma. Mild passive congestion",2,1.75,315.575
+GTEX-1IL2V-0926,Liver,GTEX-1IL2V,male,70-79,Fast death - natural causes,"congestion, steatosis","2 pieces, minimal macrovesicular steatosis (~10% of parenchyma), moderate passive congestion",1,0.43,333.855
+GTEX-1IOXB-1726,Liver,GTEX-1IOXB,male,50-59,Fast death - natural causes,steatosis,2 pieces; moderate macrovesicular steatosis; large blood vessel occupies 10% of 1 piece,1,3.96,221.834
+GTEX-1JJEA-1526,Liver,GTEX-1JJEA,male,60-69,Fast death - natural causes,"hepatitis, steatosis","2 pieces, ~60-70% micro (predominately)/macrovesicular steatosis, mild chronic hepatitis",3,0.9,507.808
+GTEX-1LSNL-2026,Liver,GTEX-1LSNL,male,50-59,Fast death - natural causes,"fibrosis, steatosis","2 pieces, moderate macrovesicular steatosis, ~30% of parenchyma; early bridging fibrosis",1,2.19,279.794
+GTEX-1M4P7-0926,Liver,GTEX-1M4P7,male,60-69,Fast death - natural causes,steatosis,"2 pieces, macrovesicular steatosis in ~10% of parenchyma.  Focal areas approach autolysis score 2",1,0.65,267.844
+GTEX-1O97I-1326,Liver,GTEX-1O97I,male,60-69,Intermediate death,steatosis,2 pieces; 20% macrovesicular steatosis,1,1.86,228.834
+GTEX-1OZHM-1126,Liver,GTEX-1OZHM,male,40-49,Slow death,"necrosis, steatosis","2 pieces, pronounced centrilobular necrosis, 40% of parenchyma, moderate macrovesciluar steatosis",2,0.41,176.989
+GTEX-1PBJI-1026,Liver,GTEX-1PBJI,female,20-29,Fast death - violent,steatosis,"2 pieces, macrovesciular steatosis, moderate/marked, involved up to ~80% of parenchyma",3,12.84,640.154
+GTEX-1QPFJ-1126,Liver,GTEX-1QPFJ,female,30-39,Ventilator case,"fibrosis, steatosis",2 pieces; extensive panlobular macrovesicular steatosis; fibrous tissue on edge of 1 piece occupies 20% [outlined],1,6.27,470.02
+GTEX-1R46S-1526,Liver,GTEX-1R46S,female,60-69,Slow death,steatosis,"2 pieces, mild macrovesicular steatosis ((<10%)",1,0.48,266.811
+GTEX-1R9JW-0826,Liver,GTEX-1R9JW,female,30-39,Ventilator case,steatosis,"2 pieces, diffuse macrovesicular steatosis, severe, >90% of parenchyma",3,11.12,488.643
+GTEX-1R9PM-0526,Liver,GTEX-1R9PM,male,20-29,Ventilator case,steatosis,"2 pieces, macrovesicular steatosis, moderate, ~30-40% of parenchyma",2,3.13,183.138
+GTEX-N7MS-1825,Liver,GTEX-N7MS,male,60-69,Fast death - natural causes,steatosis,30-40% steatotic (macrovesicular),2,1.44,115.272
+GTEX-NL3G-0426,Liver,GTEX-NL3G,female,60-69,Fast death - natural causes,steatosis,"Mico/macrovesicular steatosis, 30—40%, confirmed by glass slide review",2,1.57,424.3
+GTEX-NPJ7-2026,Liver,GTEX-NPJ7,female,60-69,Slow death,"congestion, steatosis",40-50% macrovesicular steatosis; mild chronic passive congestion,2,1.75,262.97
+GTEX-OHPM-0826,Liver,GTEX-OHPM,male,50-59,Ventilator case,"cirrhosis, fibrosis, hepatitis, steatosis",Macovesicular steatosis (50%). Mild chronic hepatitis with severe bridging fibrosis/early cirrhosis,2,9.61,234.449
+GTEX-OIZF-0826,Liver,GTEX-OIZF,male,60-69,Ventilator case,steatosis,50-60% macrovesicular steatosis,2,6.31,254.213
+GTEX-OOBJ-0826,Liver,GTEX-OOBJ,male,60-69,Ventilator case,steatosis,11.2x 8.3mm.  About 10% macrovesicular steatosis.,1,0.56,87.335
+GTEX-OXRP-0826,Liver,GTEX-OXRP,female,60-69,Intermediate death,steatosis,"9.7x6.7mm.  Patchy macrovesicular steatosis, 3-40%.  Focal central areas appear under-fixed with tears/holes.",2,1.18,84.262
+GTEX-Q2AG-1126,Liver,GTEX-Q2AG,female,40-49,Fast death - natural causes,steatosis,"2   ~9x7.5mm aliquots, patchy mixed micro-and macro-vesicular steatosis,  ~25%",1,0.54,293.146
+GTEX-RU72-1426,Liver,GTEX-RU72,female,50-59,Fast death - natural causes,"congestion, steatosis","2 aliquots,  ~7x6mm.  Moderate congestion, focal microvesicular steatosis involves  ~10-15% of parenchyma",1,0.47,173.049
+GTEX-S3LF-1326,Liver,GTEX-S3LF,male,70-79,Fast death - natural causes,steatosis,"2 aliquots, ~8x7.5mm.  Diffuse macrovesicular steatosis, ~50% of parenchyma",2,6.2,209.448
+GTEX-S7SE-1326,Liver,GTEX-S7SE,male,50-59,Fast death - natural causes,steatosis,"2 aliquots,  ~8x6mm.  Diffuse macrovesicular steatosis involves  ~70% of specimen",3,9.32,285.225
+GTEX-U8XE-1526,Liver,GTEX-U8XE,male,30-39,Slow death,"fibrosis, steatosis","2 pieces  ~7x6mm.  Diffuse macrovesicular steatosis involves 50-60% of parenchyma,  with focal early bridging fibrosis",2,6.32,128.2
+GTEX-UPJH-1626,Liver,GTEX-UPJH,male,50-59,Fast death - natural causes,steatosis,2 pieces  ~7x6mm.  Diffuse macrovesicular steatosis involves  ~30% of parenchyma,1,3.13,235.236
+GTEX-VUSG-0126,Liver,GTEX-VUSG,male,50-59,Ventilator case,steatosis,2 pieces   ~9x8mm.  10% macrovesicular steatosis,1,0.26,241.582
+GTEX-WK11-1326,Liver,GTEX-WK11,male,50-59,Fast death - violent,steatosis,"2 pieces, 7x7 & 8x8mm; 60% macrovesicular steatosis",2,9.17,277.198
+GTEX-WQUQ-1926,Liver,GTEX-WQUQ,male,60-69,Ventilator case,"congestion, steatosis","2 pieces  ~7x7mm, 30% macrovesicular steatosis, moderate passive congestion",1,0.91,105.839
+GTEX-WVLH-2126,Liver,GTEX-WVLH,male,50-59,Fast death - natural causes,"congestion, steatosis","2 pieces ~  ~8x8mm.  Chronic passive congestion, mild-moderate, minimal (<10%) macrovesicular steatosis",1,0.41,192.236
+GTEX-WY7C-0726,Liver,GTEX-WY7C,male,50-59,Ventilator case,steatosis,"2 pieces  ~9x7mm, 90% macrovesicular steatosis but reasonably well preserved",3,7.62,664.757
+GTEX-X4XX-1926,Liver,GTEX-X4XX,male,60-69,Slow death,"congestion, steatosis","2 pieces, 8x7 & 8x7mm;  30% macrovesicular steatosis. Moderate congestion.",1,3.51,144.053
+GTEX-X4XY-1626,Liver,GTEX-X4XY,male,60-69,Ventilator case,steatosis,"2 pieces, 8x7 & 8x8mm; 20% macrovesicular steatosis",1,0.75,245.055
+GTEX-X62O-1326,Liver,GTEX-X62O,male,50-59,Ventilator case,steatosis,"2 pieces, 9x8 & 8x7mm;  ~20% macrovesciular steatosis",1,1.38,227.443
+GTEX-XBEC-1526,Liver,GTEX-XBEC,male,50-59,Fast death - natural causes,"fibrosis, steatosis","2 pieces, 9x7 & 8x8mm; 70-80% macrovesicular steatosis with patchy bridging fibrosis",3,10.15,329.674
+GTEX-XOT4-0926,Liver,GTEX-XOT4,female,60-69,Fast death - natural causes,steatosis,2 pieces. 8x7 & 7x7mm; <5% macrovesicular steatosis,0,0.33,145.022
+GTEX-Y5LM-0426,Liver,GTEX-Y5LM,female,40-49,Ventilator case,steatosis,2 pieces. 13x9 & 13x10mm; 70% small droplet variant of macrovesicular steatosis.,3,0.2,457.758
+GTEX-Y5V5-0926,Liver,GTEX-Y5V5,female,60-69,Ventilator case,steatosis,"2 pieces, 10x10 & 11x10mm; mild-moderate macrovesicular steatosis involving ~30-40% of parenchyma",2,3.69,753.942
+GTEX-YEC4-0826,Liver,GTEX-YEC4,male,40-49,Ventilator case,steatosis,"2 pieces, 12x5 and 10x8mm; diffuse macrovesciular steatosis involves ~80% of parenchyma",3,14.89,646.892
+GTEX-Z93S-0726,Liver,GTEX-Z93S,male,50-59,Fast death - natural causes,steatosis,"2 pieces, diffuse macrovesicular steatosis involving ~60% of parenchyma",2,8.35,190.24
+GTEX-Z9EW-0426,Liver,GTEX-Z9EW,male,40-49,Ventilator case,steatosis,"2 pieces, diffuse macrovesicular steatosis involves ~ 50% of parenchyma",2,5.31,368.956
+GTEX-ZE7O-1226,Liver,GTEX-ZE7O,female,50-59,Fast death - natural causes,steatosis,2 pieces; 50% macrovesicular steatosis,2,7.19,320.578
+GTEX-ZEX8-0826,Liver,GTEX-ZEX8,male,50-59,Ventilator case,steatosis,2 pieces. 10% macrovesicular steatosis.,1,1.34,131.653
+GTEX-ZF29-2026,Liver,GTEX-ZF29,female,60-69,Ventilator case,steatosis,2 pieces; diffuse severe microvesicular and macrovesicular steatosis (~80%).,3,11.82,474.318
+GTEX-ZU9S-0926,Liver,GTEX-ZU9S,male,30-39,Fast death - natural causes,"congestion, steatosis",2 pieces. moderate vascular congestion.. 10% macrovesicular steatosis.,1,1.21,130.262
+GTEX-ZVT3-1626,Liver,GTEX-ZVT3,female,60-69,Fast death - natural causes,steatosis,"2 pieces, mild macrovesicular steatosis (~10-20%)",1,1.38,316.469
+GTEX-ZWKS-1726,Liver,GTEX-ZWKS,male,30-39,Slow death,steatosis,2 pieces diffuse mild macrovesciular steatosis involves ~20% of parenchyma,1,1.07,216.268
+GTEX-ZXG5-1126,Liver,GTEX-ZXG5,male,60-69,Intermediate death,steatosis,2 pieces; 30% macrovesicular steatosis. CAPSULE present on both pieces (Sample should be below capsule).,1,2.21,220.297
+GTEX-ZYY3-0626,Liver,GTEX-ZYY3,female,60-69,Slow death,"congestion, steatosis","2 pieces, severe passive congestion, mild steatosis (~10%)",1,0.11,234.852
