@@ -8,8 +8,8 @@ Liverquant is a Python package designed for automated analysis of Whole Slide Im
   - [detect_fat_globules_wsi](#detect_fat_globules_wsi)
   - [Genotype-Tissue Expression (GTEx) public dataset](#genotype-tissue-expression-gtex-public-dataset)
 - [Fibrosis Quantification](#fibrosis-quantification)
-  - [segment_by_color](#segment_by_color)
-  - [segment_by_color_wsi](#segment_by_color_wsi)
+  - [segment_fibrosis](#segment_fibrosis)
+  - [segment_fibrosis_wsi](#segment_fibrosis_wsi)
 
 ## Installation
 The recommended way to install is via pip:
@@ -224,24 +224,31 @@ To evaluate the extent of liver fibrosis, histological staining techniques are c
 
 The library implements two main methods to identify collagens using colour segmentation in both individual image tiles and the whole slide image.
 
-### <code>segment_by_color</code>
+### <code>segment_fibrosis</code>
 Retrieve a binary mask for segmented regions based on their colour profile in the HSV space.
 - Parameters:
   - img: {numpy.ndarray}: input RGB image tile in range [0, 255]
   - mask: {numpy.ndarray}: binary mask (either 0 or 255) for regions-of-interest [default=None]
-  - lowerb: {list: 3}: inclusive lower bound array in HSV-space for color segmentation [default=[0, 0, 200]]
-  - upperb: {list: 3}: inclusive upper bound array in HSV-space for color segmentation [default=[0, 25, 255]]
-  - hole_size: {float}: remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
+  - stain: {string}: VG or PSR or MTC
+  - lowerb: {list: 3}: inclusive lower bound array in HSV-space for color segmentation [default=None]
+  - upperb: {list: 3}: inclusive upper bound array in HSV-space for color segmentation [default=None]
+  - mixing_matrix: {numpy.ndarray}: the proportion of each wavelength absorbed from red, green, and blue channels [default=None]
+  - ref_mixing_matrix: {numpy.ndarray}: reference mixing matrix to normalise input image
+  - scale: {list: 3}: global scaling factor for stain normalisation
+  - hole_size: {float}: remove holes smaller than hole_size; if zero, all holes are reserved. If -1, all holes
                         will be removed. [default=0]
+  - blob_size: {float}: remove blobs smaller than blob_size; if zero, all blobs are reserved.
   - resolution: {float}: pixel size in micro-meter [default=1]
   
 - Returns:
-  - mask: {numpy.ndarray}: binary mask (either 0 or 255) for segmented regions
+  - cpa: {float}: Collagen Proportionate Area (CPA) in percent
+  - collagen_mask: {numpy.ndarray}: binary mask (either 0 or 255) for segmented regions
+  - roi: {numpy.ndarray}: binary mask (either 0 or 255) for the regions of interest
 
 > Note that similar to _OpenCV_, Hue has values from 0 to 180, Saturation and Value from 0 to 255.
 
 #### Example 3
-Here is a short script to demonstrate the utility of `segment_by_color`. An image patch stained with PSR is provided in the example folder. To segment the collagen shown in red, Hue between 0 and 10 or 170-180 should be filtered out. We have combined the two ranges into one effective range [-10, 10] in the sample code below. Since Hue is inherently periodic, negative Hue can be interpreted as positive integers by adding 180. Note that similar to _OpenCV_, Hue has values from 0 to 180.
+Here is a short script to demonstrate the utility of `segment_fibrosis`. An image tile stained with PSR is provided in the example folder. To segment the collagen shown in red, Hue between 0 and 10 or 170-180 should be filtered out. We have combined the two ranges into one effective range [-10, 10] in the sample code below. Since Hue is inherently periodic, negative Hue can be interpreted as positive integers by adding 180. Note that similar to _OpenCV_, Hue has values from 0 to 180.
 
 <figure>
   <img src="https://github.com/mfarzi/liverquant/raw/main/example/collagen_segmentation.jpg" alt="Collage Segmentation Example" style="width:80%; margin-right:10px;" />
@@ -249,84 +256,79 @@ Here is a short script to demonstrate the utility of `segment_by_color`. An imag
 
 ```
 import cv2 as cv
-from liverquant import segment_by_color
+from liverquant import segment_fibrosis
 
 # read sample image tile
 img = cv.imread('./example/tile02_PSR.jpg')
 img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 
-# Segment collagen using Hue-Saturation-Value channels
-# To fill in holes, either set hole_size=None or increase the hole_size
-mask = segment_by_color(img,
-                        lowerb=[-10, 50, 100],
-                        upperb=[10, 255, 255],
-                        resolution=1.0124,
-                        hole_size=25)
+cpa, mask, roi = segment_fibrosis(img,
+                                  lowerb=[-10, 50, 100],
+                                  upperb=[10, 255, 255],
+                                  resolution=1.0124)
+
+print(f'CPA = {cpa}%')
 
 # write the tagged image
 cv.imwrite('./example/tile02_PSR_mask.jpg', mask)
 ```
 
-### <code>segment_by_color_wsi</code>
+### <code>segment_fibrosis_wsi</code>
 Retrieve segmented regions in `cv2geojson.GeoContour` format based on their colour profile in the HSV space from the whole slide image (WSI).
 - Parameters:
   - img: {numpy.ndarray}: input RGB image tile in range [0, 255]
+  - stain: {string}: VG or PSR or MTC
   - roi: {list: cv2geojson.GeoContours}: regions-of-interest in the WSI frame [default=None]
-  - lowerb: {list: 3}: inclusive lower bound array in HSV-space for color segmentation [default=[0, 0, 200]]
-  - upperb: {list: 3}: inclusive upper bound array in HSV-space for color segmentation [default=[0, 25, 255]]
-  - tile_size: {int}: the tile size to sweep the whole slide image [default=2048]
-  - downsample: {int}: downsampling ratio as a power of two [default=2]
+  - lowerb: {list: 3}: inclusive lower bound array in HSV-space for color segmentation [default=None]
+  - upperb: {list: 3}: inclusive upper bound array in HSV-space for color segmentation [default=None]
+  - mixing_matrix: {numpy.ndarray}: the proportion of each wavelength absorbed from red, green, and blue channels [default=None]
+  - ref_mixing_matrix: {numpy.ndarray}: reference mixing matrix to normalise input image
+  - scale: {list: 3}: global scaling factor for stain normalisation
+  
   - hole_size: {float}: remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
                         will be removed. [default=0]
-  - cores_num: {int}: max number of cores to be used for parallel computation 
-
+  - blob_size: {float}: remove blobs smaller than blob_size; if zero, all blobs are reserved [default=0]
+  - tile_size: {int}: the tile size to sweep the whole slide image [default=2048]
+  - downsample: {int}: downsampling ratio as a power of two [default=2]
+  - cores_num: {int}: max number of cores to be used for parallel computation [default=4]
+  
 - Returns:
-  - geocontours: {list: cv2geojson.GeoContour}: polygons representing segmented regions
-  - area_color: {float}: the area of segmented regions in milli-meter squared
-  - run_time: {float}: run time for the code completion in seconds
+  - cpa: {float}: Collagen Proportionate Area (CPA) in percent
+  - geocontours: {list: cv2geojson.GeoContour}: polygons representing segmented fibrotic regions
+  - roi: {numpy.ndarray}: binary mask (either 0 or 255) for the regions of interest
 
 > Note that similar to _OpenCV_, Hue has values from 0 to 180, Saturation and Value from 0 to 255. This function divides the input image into image tiles and applies the `segment_by_color` algorithm (refer to [Example 3](#example-3)) to each image tile. `segment_by_color_wsi` employs parallel computation, and the entire script should be enclosed within a `if __name__ == '__main__'` block. Liverquant export detected geometrical features in [geojson](https://geojson.org/) format using the [`cv2geojson`](https://github.com/mfarzi/cv2geojson) python package, which can be visualised using dedicated software tools like [QuPath](https://qupath.github.io/). 
 
 #### Example 4
-Here is a short script to demonstrate the utility of `segment_by_color_wsi`. To segment the collagen shown in red, Hue between 0 and 10 or 170-180 should be filtered out. Since Hue is inherently periodic, negative Hue can be interpreted as positive integers by adding 180. We have combined the two ranges into one effective range [-10, 10]in the sample code below.
+Here is a short script to demonstrate the utility of `segment_fibrosis_wsi`. To segment the collagen shown in red, Hue between 0 and 10 or 170-180 should be filtered out. Since Hue is inherently periodic, negative Hue can be interpreted as positive integers by adding 180. We have combined the two ranges into one effective range [-10, 10]in the sample code below.
 
 ```
-from liverquant import segment_by_color_wsi, segment_foreground_wsi
+from liverquant import segment_fibrosis_wsi
 from cv2geojson import export_annotations
 from openslide import OpenSlide
-import numpy as np
 
 if __name__ == '__main__':
     # open the whole slide image
-    slide = OpenSlide('./example/filename.svs')
-    resolution = float(slide.properties['openslide.mpp-x'])
-
-    # segment foreground
-    roi = segment_foreground_wsi(slide)
-    area_tissue = np.sum([cnt.area(resolution) for cnt in roi])*1e-6
+    slide = OpenSlide('./example/PSR_slide.svs')
 
     # Segment collagen using Hue-Saturation-Value channels
-    geocontours, area_color, run_time = segment_by_color_wsi(slide,
-                                                             roi=roi,
-                                                             lowerb=[-10, 50, 100],
-                                                             upperb=[10, 255, 255],
-                                                             downsample=8,
-                                                             tile_size=4096,
-                                                             hole_size=250,
-                                                             cores_num=12)
+    cpa, geocontours, roi = segment_fibrosis_wsi(slide,
+                                                 stain='PSR',
+                                                 lowerb=[-10, 50, 100],
+                                                 upperb=[10, 255, 255],
+                                                 downsample=16,
+                                                 tile_size=4096,
+                                                 cores_num=12)
+
+    # print out results
+    print(f'The collagen proportionate area is {cpa}%.')
 
     # export geojson features
     features = []
     for geocontour in roi:
         features.append(geocontour.export_feature(color=(255, 0, 0), label='foreground'))
     for geocontour in geocontours:
-        if geocontour.area(resolution) > 500:
-            features.append(geocontour.export_feature(color=(0, 0, 255), label='fibrosis'))
-    export_annotations(features, './example/filename.geojson')
+        features.append(geocontour.export_feature(color=(0, 0, 255), label='fibrosis'))
+    export_annotations(features, './example/PSR_slide.geojson')
 
-    cpa = area_color / area_tissue * 100
-
-    # print out results
-    print(f'The collagen proportionate area is {cpa}%.')
-    print(f'The run time is {run_time} seconds.')
 ```

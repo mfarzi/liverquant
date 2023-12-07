@@ -11,6 +11,9 @@ import numpy as np
 import cv2 as cv
 from matplotlib import pyplot as plt
 from sklearn.decomposition import NMF
+import random
+from .slidepatch import get_random_blocks
+from sklearn.mixture import GaussianMixture
 
 
 def get_ref_stian_vectors(stain='HE'):
@@ -23,28 +26,51 @@ def get_ref_stian_vectors(stain='HE'):
         max_concentrations:
     """
     if stain == 'HE':
-        stain_vectors = np.array([[0.69652276,  0.32759918,  0.59774075],
-                                  [0.70660026,  0.70872559, -0.66760321],
-                                  [0.12478829,  0.62480942,  0.44386029]])
+        stain_vectors = np.array([[0.69652276, 0.32759918, 0.59774075],
+                                  [0.70660026, 0.70872559, -0.66760321],
+                                  [0.12478829, 0.62480942, 0.44386029]])
         max_concentrations = np.array([1.49931920, 1.36812984, 0.16090817])
     elif stain == 'PSR':
-        stain_vectors = np.array([[0.29700838,  0.18553988,  0.95237073],
-                                  [0.77096590,  0.23285926, -0.28187702],
-                                  [0.56338051,  0.95464733, -0.11634148]])
+        stain_vectors = np.array([[0.29700838, 0.18553988, 0.95237073],
+                                  [0.77096590, 0.23285926, -0.28187702],
+                                  [0.56338051, 0.95464733, -0.11634148]])
         max_concentrations = np.array([1.82058375, 1.23927257, 0.31724941])
     elif stain == 'MTC':
-        stain_vectors = np.array([[0.73060417,  0.22375230,  0.46580686],
-                                  [0.64489721,  0.67064406, -0.71097224],
-                                  [0.22433263,  0.70722801,  0.52682297]])
+        stain_vectors = np.array([[0.73060417, 0.22375230, 0.46580686],
+                                  [0.64489721, 0.67064406, -0.71097224],
+                                  [0.22433263, 0.70722801, 0.52682297]])
         max_concentrations = np.array([1.53293709, 1.51704764, 0.12945636])
     elif stain == 'VG':
-        stain_vectors = np.array([[0.52941714,  0.12985407,  0.75251392],
-                                  [0.71697463,  0.35222347, -0.64369966],
-                                  [0.45350289,  0.92686382,  0.13918888]])
+        stain_vectors = np.array([[0.52941714, 0.12985407, 0.75251392],
+                                  [0.71697463, 0.35222347, -0.64369966],
+                                  [0.45350289, 0.92686382, 0.13918888]])
         max_concentrations = np.array([1.55067450, 1.20670689, 0.15414170])
     else:
         raise ValueError('Stain must be either "HE", "PSR", "MTC" or "VG".')
     return stain_vectors, max_concentrations
+
+
+def get_fibrosis_hsv_bounds(stain='VG'):
+    """
+    Return the reference stain vectors
+    Args:
+        stain: {str} either 'HE', 'VG', 'PSR', or 'MTC'
+    Returns:
+        stain_vectors:
+        max_concentrations:
+    """
+    if stain == 'VG':
+        lowerb = [-15, 50, 100]
+        upperb = [10, 255, 255]
+    elif stain == 'PSR':
+        lowerb = [-12, 50, 100]
+        upperb = [12, 255, 255]
+    elif stain == 'MTC':
+        lowerb = [100, 50, 100]
+        upperb = [140, 255, 255]
+    else:
+        raise ValueError('Stain must be either "PSR", "MTC" or "VG".')
+    return lowerb, upperb
 
 
 def compute_optical_density(img):
@@ -144,7 +170,7 @@ def estimate_stain_concentration(img, mixing_matrix):
     optical_density = compute_optical_density(img_vectorised)
     concentration = np.linalg.lstsq(mixing_matrix, np.transpose(optical_density), rcond=None)[0]
     concentration = np.transpose(concentration)
-    concentration = concentration.reshape(img.shape)
+    concentration = concentration.reshape([img.shape[0], img.shape[1], mixing_matrix.shape[1]])
     return concentration
 
 
@@ -189,7 +215,7 @@ def normalise_stains(img, mixing_matrix, mixing_matrix_ref=None, scale=(1.0, 1.0
         mixing_matrix_ref = mixing_matrix
     concentrations = estimate_stain_concentration(img, mixing_matrix)
 
-    concentrations_vectorised = concentrations.reshape(-1, 3)
+    concentrations_vectorised = concentrations.reshape(-1, mixing_matrix.shape[1])
     concentrations_normalised = np.multiply(concentrations_vectorised, scale)
 
     img_normal = 255 * np.exp(-mixing_matrix_ref.dot(concentrations_normalised.T))
@@ -198,7 +224,7 @@ def normalise_stains(img, mixing_matrix, mixing_matrix_ref=None, scale=(1.0, 1.0
     return img_normal
 
 
-def get_maximum_stain_concentration(img, mixing_matrix):
+def get_maximum_stain_concentration(img, mask=None, mixing_matrix=None, q=99):
     """
     :param img_vectorised:
     :param stain_vectors:
@@ -207,10 +233,90 @@ def get_maximum_stain_concentration(img, mixing_matrix):
     :return max_concentrations: numpy array of 2x1
     """
     concentrations = estimate_stain_concentration(img, mixing_matrix)
-    concentrations = concentrations.reshape(-1, 3)
-    max_concentrations = np.percentile(concentrations, 99, axis=0)
+
+    c1mask = concentrations[:, :, 0] > concentrations[:, :, 1]
+    c1mask = c1mask.astype(np.uint8) * 255
+    if mask is not None:
+        c1mask = cv.bitwise_and(c1mask, mask)
+    c1max = np.percentile(concentrations[c1mask == 255, 0], q)
+
+    c2mask = concentrations[:, :, 1] > concentrations[:, :, 0]
+    c2mask = c2mask.astype(np.uint8) * 255
+    if mask is not None:
+        c2mask = cv.bitwise_and(c2mask, mask)
+    c2max = np.percentile(concentrations[c2mask == 255, 1], q)
+
+    if mask is not None:
+        c3max = np.percentile(concentrations[mask == 255, 2], q)
+    else:
+        c3max = np.percentile(concentrations.reshape(-1, 1), q)
+    c3max = np.max([0, c3max])
+    max_concentrations = np.array([c1max, c2max, c3max])
 
     return max_concentrations
+
+
+def estimate_mixing_matrix_wsi(slide, stain=None, mode='SVD', alpha=1, beta=0.15, roi=None, downsample=1, blocks_num=50):
+    img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
+    x = img[mask == 255, ]
+    mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode=mode, alpha=alpha, beta=beta)
+    return mixing_matrix
+
+
+def get_maximum_stain_concentration_wsi(slide, mixing_matrix, roi=None, downsample=1, blocks_num=50, q=99):
+    """
+    :param img_vectorised:
+    :param stain_vectors:
+    :param max_intensity:
+
+    :return max_concentrations: numpy array of 2x1
+    """
+    img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
+    max_concentrations = get_maximum_stain_concentration(img, mask=mask, mixing_matrix=mixing_matrix, q=q)
+    return max_concentrations
+
+
+def get_maximum_likelihood_threshold(x, whisker=1.5, means_init=None, n_iter=1, verbose=False):
+    # remove outliers
+    q1 = np.quantile(x, 0.25)
+    q3 = np.quantile(x, 0.75)
+    iqr = q3 - q1
+    lower_bound = q1 - whisker * iqr
+    upper_bound = q3 + whisker * iqr
+    y = np.array([xi for xi in x if lower_bound < xi < upper_bound])
+    y = np.reshape(y, (-1, 1))
+
+    best_model = GaussianMixture(n_components=2, means_init=means_init)
+    best_model.fit(y)
+    loglikelihood = best_model.score(y)
+    for i in range(n_iter):
+        gmm = GaussianMixture(n_components=2, means_init=means_init)
+        gmm.fit(y)
+        score = gmm.score(y)
+        if score < loglikelihood:
+            best_model = gmm
+            loglikelihood = score
+        if verbose:
+            print(f'iteration {i}: loglikelihood = {score}')
+
+    # find threshold for prob = 0.5
+    xx = np.linspace(np.min(x), np.max(x), 1000)
+    probs = best_model.predict_proba(xx.reshape(-1, 1))
+    thresh = np.min(xx[np.where(np.abs(probs[:, 0] - 0.5) < 0.05)])
+
+    mu1, mu2 = best_model.means_.flatten()
+    sigma1, sigma2 = np.sqrt(best_model.covariances_).flatten()
+    if verbose:
+        print(f'best model: loglikelihood={loglikelihood}, mu1 = {mu1}, mu2 = {mu2}, sigma1 = {sigma1},'
+              f' sigma2 = {sigma2}, weights = {best_model.weights_}')
+
+    if mu1 < mu2:
+        c1_bounds = [mu1 - 3 * sigma1, thresh]
+        c2_bounds = [thresh, mu2 + 3*sigma2]
+    else:
+        c1_bounds = [mu2 - 3 * sigma2, thresh]
+        c2_bounds = [thresh, mu1 + 3 * sigma1]
+    return c1_bounds, c2_bounds
 
 
 if __name__ == '__main__':
@@ -250,7 +356,7 @@ if __name__ == '__main__':
     plt.subplot(1, 4, 4)
     plt.imshow(m3)
 
-    scale = scale_a/scale_b
+    scale = scale_a / scale_b
     # scale[2] = 0
     img_c = normalise_stains(img_b, Mb, Ma, scale)
     plt.figure()
