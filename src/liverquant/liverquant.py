@@ -2,12 +2,15 @@ import numpy as np
 import cv2 as cv
 from cv2geojson import find_geocontours, draw_geocontours, export_annotations
 from functools import wraps, partial
-from .slidepatch import PatchGenerator, get_tile_image
+from .slidepatch import PatchGenerator, get_tile_image, get_random_blocks
+from .colorutil import get_ref_stian_vectors, estimate_mixing_matrix, get_maximum_stain_concentration, normalise_stains,\
+    estimate_mixing_matrix_wsi, get_maximum_stain_concentration_wsi, get_fibrosis_hsv_bounds
 from multiprocessing import Pool
 import time
 from scipy import ndimage as ndi
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
+from sklearn.mixture import GaussianMixture
 
 
 def get_contours_decorator(get_mask):
@@ -548,3 +551,222 @@ def filter_fat_globules(geocontours, x_range=None, y_range=None, solidity=(0.7, 
             other.append(geocontour)
 
     return globules, unknown, other
+
+
+def segment_fibrosis_contour(img, mask=None, stain=None, lowerb=None, upperb=None, mixing_matrix=None,
+                             ref_mixing_matrix=None, scale=None, hole_size=0.0, blob_size=0.0, resolution=1.0):
+    """
+    Segment regions based on their color profile in HSV space
+
+    :param img:          A numpy array of input image tile in RGB space
+    :param mask:         A numpy array of desired ROIs [either 255 or 0] corresponding to img
+    :param stain:        VG or PSR or MTC
+    :param lowerb:       Inclusive lower bound array in HSV-space for color segmentation
+    :param upperb:       Inclusive upper bound array in HSV-space for color segmentation
+    :param mixing_matrix:
+    :param ref_mixing_matrix:
+    :param scale:
+    :param hole_size:    Remove holes smaller than hole_size; if zero, all holes will be reserved. If -1, all holes
+                         will be removed.
+    :param blob_size:
+    :param resolution:   Image pixel resolution in micron
+
+    :return geocontours: A list of cv2geojson.GeoContour objects representing color segmented ROIs
+    """
+    if mask is None:
+        mask = np.zeros(img.shape[:2], dtype=np.uint8)+255
+
+    if scale is None:
+        scale = (1, 1, 0)
+
+    # retrieve lower and upper bounds
+    if lowerb is None:
+        lowerb = get_fibrosis_hsv_bounds(stain)[0]
+    if upperb is None:
+        upperb = get_fibrosis_hsv_bounds(stain)[1]
+
+    # retrieve reference measurements
+    if ref_mixing_matrix is None:
+        # no image normalisation
+        img_normal = img
+    else:
+        if mixing_matrix is None:
+            x = img[mask == 255,]
+            mixing_matrix = estimate_mixing_matrix(x, stain=stain, mode='SVD', alpha=1, beta=0.15)
+        # normalise the image
+        img_normal = normalise_stains(img, mixing_matrix=mixing_matrix, mixing_matrix_ref=ref_mixing_matrix, scale=scale)
+
+    contours = segment_by_color_contour(img_normal,
+                                        mask=mask,
+                                        lowerb=lowerb,
+                                        upperb=upperb,
+                                        hole_size=hole_size,
+                                        resolution=resolution)
+    # filter small blob size
+    geocontours = [cnt for cnt in contours if cnt.area(resolution) > blob_size]
+
+    return geocontours
+
+
+def segment_fibrosis_wsi(slide, stain, roi=None, lowerb=None, upperb=None, mixing_matrix=None, ref_mixing_matrix=None,
+                         scale=None, hole_size=0.0, blob_size=0.0, tile_size=2048, downsample=8, cores_num=4):
+    """
+    segment fibrosis in liver tissue using color and morphological features by sweeping over the whole slide image
+    (WSI) tile by tile and return annotations (geojson)
+
+    :param slide:                An openslide object to the whole slide image
+    :param roi:                  A list of cv2geojson.GeoContours for the selected ROIs
+    :param stain
+    :param lowerb:               Inclusive lower bound array in HSV-space for color segmentation
+    :param upperb:               Inclusive upper bound array in HSV-space for color segmentation
+    :param mixing_matrix:
+    :param ref_mixing_matrix:
+    :param tile_size:            The tile size to sweep the whole slide image
+    :param downsample:           Downsampling ratio as a power of two
+    :param cores_num:            Number of cores for parallel computation
+
+    :return cpa:                 The amount of collagen in the tissue represented in percent
+    :return geocontours:         List of cv2geojson.GeoContour geometries representing fat globules as Polygons
+    :return roi:                 list of cv2geojson.GeoContour geometries representing the foreground mask
+    """
+    if roi is None:
+        roi = segment_foreground_wsi(slide)
+
+    # extract image tiles
+    tiles = PatchGenerator(slide, tile_size=tile_size, overlap=0, downsample=downsample, roi=roi)
+
+    pixel_resolution = float(slide.properties['openslide.mpp-x'])
+
+    print(f'Start parallel computation using {cores_num} cores...')
+    with Pool(cores_num) as pool:
+        partial_segment_fibrosis = partial(segment_fibrosis_contour,
+                                           stain=stain,
+                                           lowerb=lowerb,
+                                           upperb=upperb,
+                                           mixing_matrix=mixing_matrix,
+                                           ref_mixing_matrix=ref_mixing_matrix,
+                                           scale=scale,
+                                           hole_size=hole_size,
+                                           blob_size=blob_size,
+                                           resolution=pixel_resolution*downsample)
+        results = pool.starmap(partial_segment_fibrosis, tiles)
+    pool.close()
+    print('parallel coding is completed.')
+
+    # pooling results and scaling contours
+    geocontours = []
+    for index, contours in enumerate(results):
+        offset = tiles.address[index]
+        # scale the contours
+        for contour in contours:
+            contour.scale_up(ratio=downsample, offset=offset)
+        geocontours.extend(contours)
+
+    # estimate collagen proportionate area (cpa)
+    area_tissue = np.sum([cnt.area(pixel_resolution) for cnt in roi])
+    area_fibrosis = np.sum([cnt.area(pixel_resolution) for cnt in geocontours])
+    cpa = np.round(area_fibrosis / area_tissue * 100, 2)
+
+    return cpa, geocontours, roi
+
+
+def segment_fibrosis(*args, **kwargs):
+    # retrieve contours for fibrotic tissue
+    geocontours = segment_fibrosis_contour(*args, **kwargs)
+
+    foreground = kwargs.get('mask')
+    if foreground is None:
+        frame_size = args[0].shape[:2]
+        foreground = np.zeros(frame_size, dtype=np.uint8)+255
+
+    # draw mask
+    collagen_mask = np.zeros(foreground.shape, dtype=np.uint8)
+    draw_geocontours(collagen_mask, geocontours, mode='imagej')
+
+    cpa = np.round(np.count_nonzero(collagen_mask) / np.count_nonzero(foreground) * 100, 2)
+    return cpa, collagen_mask, foreground
+
+
+def get_hsv_bounds(img, mask=None, stain='VG', outlier_rate=2.5, beta=10, means_init=None, n_iter=1, verbose=False):
+    # extract white regions and exclude them
+    mask_white = segment_by_color(img, mask, lowerb=[0, 0, 200], upperb=[180, beta, 255])
+    mask_tissue = cv.bitwise_not(mask_white)
+    if mask is not None:
+        mask_tissue = cv.bitwise_and(mask_tissue, mask)
+
+    # convert to HSV
+    img_hsv = cv.cvtColor(img, cv.COLOR_RGB2HSV)
+    h, s, v = cv.split(img_hsv)
+    hue = np.int32(h)
+    if stain in ['VG', 'PSR']:
+        hue[hue > 90] = hue[hue > 90] - 180
+    x = hue[mask_tissue == 255]
+
+    # remove outliers
+    q1 = np.quantile(x, 0.25)
+    q3 = np.quantile(x, 0.75)
+    iqr = q3 - q1
+
+    # estimate lower bound
+    lower_bound = np.percentile(x, outlier_rate)
+    lower_bound_range = np.array([q1 - 1.5 * iqr, q1 - 3 * iqr, q1 - 4.5 * iqr, q1 - 6 * iqr, q1 - 7.5 * iqr, q1 - 9 * iqr])
+    if np.any(lower_bound_range < lower_bound):
+        lower_bound = np.max(lower_bound_range[lower_bound_range < lower_bound])
+
+    # estimate upper bound
+    upper_bound = np.percentile(x, 100-outlier_rate)
+    upper_bound_range = np.array([q3 + 1.5 * iqr, q3 + 3 * iqr, q3 + 4.5 * iqr, q1 + 6 * iqr, q1 + 7.5 * iqr, q1 + 9 * iqr])
+    if np.any(upper_bound_range > upper_bound):
+        upper_bound = np.min(upper_bound_range[upper_bound_range > upper_bound])
+
+    bounds = [lower_bound, upper_bound]
+
+    # remove outliers
+    y = np.array([xi for xi in x if bounds[0] < xi < bounds[1]])
+    y = np.reshape(y, (-1, 1))
+
+    best_model = GaussianMixture(n_components=2, means_init=means_init)
+    best_model.fit(y)
+    loglikelihood = best_model.score(y)
+    for i in range(n_iter):
+        gmm = GaussianMixture(n_components=2, means_init=means_init)
+        gmm.fit(y)
+        score = gmm.score(y)
+        if score < loglikelihood:
+            best_model = gmm
+            loglikelihood = score
+        if verbose:
+            print(f'iteration {i}: loglikelihood = {score}')
+
+    # find threshold for prob = 0.5
+    xx = np.linspace(bounds[0], bounds[1], 1000)
+    probs = best_model.predict_proba(xx.reshape(-1, 1))
+    thresh = np.min(xx[np.where(np.abs(probs[:, 0] - 0.5) < 0.05)])
+
+    mu1, mu2 = best_model.means_.flatten()
+    sigma1, sigma2 = np.sqrt(best_model.covariances_).flatten()
+
+    if mu1 < mu2:
+        lowerb = [int(mu1 - 3 * sigma1), 50, 100]
+    else:
+        lowerb = [int(mu2 - 3 * sigma2), 50, 100]
+    upperb = [int(thresh), 255, 255]
+
+    if verbose:
+        print(f'best model: mu1 = {mu1}, mu2 = {mu2}, sigma1 = {sigma1}, sigma2 = {sigma2}, weights = {best_model.weights_}, bounds = {bounds}')
+    return lowerb, upperb
+
+
+def get_hsv_bounds_wsi(slide, roi=None, stain='VG', blocks_num=50, downsample=32, outlier_rate=2.5, beta=10,
+                       means_init=None, n_iter=1, verbose=False):
+    img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
+    lowerb, upperb = get_hsv_bounds(img,
+                                    mask=mask,
+                                    stain=stain,
+                                    outlier_rate=outlier_rate,
+                                    beta=beta,
+                                    means_init=means_init,
+                                    n_iter=n_iter,
+                                    verbose=verbose)
+    return lowerb, upperb
+
