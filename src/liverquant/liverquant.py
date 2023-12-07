@@ -669,11 +669,22 @@ def segment_fibrosis_wsi(slide, stain, roi=None, lowerb=None, upperb=None, mixin
 
     return cpa, geocontours, roi
 
-@get_mask_decorator
+
 def segment_fibrosis(*args, **kwargs):
-    # wrapper function for detect_fat_globules
-    result = segment_fibrosis_contour(*args, **kwargs)
-    return result
+    # retrieve contours for fibrotic tissue
+    geocontours = segment_fibrosis_contour(*args, **kwargs)
+
+    foreground = kwargs.get('mask')
+    if foreground is None:
+        frame_size = args[0].shape[:2]
+        foreground = np.zeros(frame_size, dtype=np.uint8)+255
+
+    # draw mask
+    collagen_mask = np.zeros(foreground.shape, dtype=np.uint8)
+    draw_geocontours(collagen_mask, geocontours, mode='imagej')
+
+    cpa = np.round(np.count_nonzero(collagen_mask) / np.count_nonzero(foreground) * 100, 2)
+    return cpa, collagen_mask, foreground
 
 
 def get_hsv_bounds(img, mask=None, stain='VG', outlier_rate=2.5, beta=10, means_init=None, n_iter=1, verbose=False):
