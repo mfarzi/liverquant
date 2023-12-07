@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from sklearn.decomposition import NMF
 import random
 from .slidepatch import get_random_blocks
+from sklearn.mixture import GaussianMixture
 
 
 def get_ref_stian_vectors(stain='HE'):
@@ -273,6 +274,49 @@ def get_maximum_stain_concentration_wsi(slide, mixing_matrix, roi=None, downsamp
     img, mask = get_random_blocks(slide, blocks_num=blocks_num, roi=roi, downsample=downsample)
     max_concentrations = get_maximum_stain_concentration(img, mask=mask, mixing_matrix=mixing_matrix, q=q)
     return max_concentrations
+
+
+def get_maximum_likelihood_threshold(x, whisker=1.5, means_init=None, n_iter=1, verbose=False):
+    # remove outliers
+    q1 = np.quantile(x, 0.25)
+    q3 = np.quantile(x, 0.75)
+    iqr = q3 - q1
+    lower_bound = q1 - whisker * iqr
+    upper_bound = q3 + whisker * iqr
+    y = np.array([xi for xi in x if lower_bound < xi < upper_bound])
+    y = np.reshape(y, (-1, 1))
+
+    best_model = GaussianMixture(n_components=2, means_init=means_init)
+    best_model.fit(y)
+    loglikelihood = best_model.score(y)
+    for i in range(n_iter):
+        gmm = GaussianMixture(n_components=2, means_init=means_init)
+        gmm.fit(y)
+        score = gmm.score(y)
+        if score < loglikelihood:
+            best_model = gmm
+            loglikelihood = score
+        if verbose:
+            print(f'iteration {i}: loglikelihood = {score}')
+
+    # find threshold for prob = 0.5
+    xx = np.linspace(np.min(x), np.max(x), 1000)
+    probs = best_model.predict_proba(xx.reshape(-1, 1))
+    thresh = np.min(xx[np.where(np.abs(probs[:, 0] - 0.5) < 0.05)])
+
+    mu1, mu2 = best_model.means_.flatten()
+    sigma1, sigma2 = np.sqrt(best_model.covariances_).flatten()
+    if verbose:
+        print(f'best model: loglikelihood={loglikelihood}, mu1 = {mu1}, mu2 = {mu2}, sigma1 = {sigma1},'
+              f' sigma2 = {sigma2}, weights = {best_model.weights_}')
+
+    if mu1 < mu2:
+        c1_bounds = [mu1 - 3 * sigma1, thresh]
+        c2_bounds = [thresh, mu2 + 3*sigma2]
+    else:
+        c1_bounds = [mu2 - 3 * sigma2, thresh]
+        c2_bounds = [thresh, mu1 + 3 * sigma1]
+    return c1_bounds, c2_bounds
 
 
 if __name__ == '__main__':
