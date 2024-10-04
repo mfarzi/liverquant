@@ -122,6 +122,7 @@ def extract_tiles_fast(frame, tile_size=(1024, 1024), overlap=(0, 0), downsample
     ref_stride_x = stride_x * downsample
     ref_stride_y = stride_y * downsample
     ref_tile_size = (tile_size[0] * downsample, tile_size[1] * downsample)
+    ref_shift = (ref_tile_size[0]/2, ref_tile_size[1]/2)
     ref_overlap = (overlap[0] * downsample, overlap[1] * downsample)
 
     if roi is not None:
@@ -146,7 +147,10 @@ def extract_tiles_fast(frame, tile_size=(1024, 1024), overlap=(0, 0), downsample
             y_range = np.arange(row_start, row_stop, step=ref_stride_y)
             y_coords, x_coords = np.meshgrid(y_range, x_range, indexing='ij')
             coord_candidates = np.array([x_coords.flatten(), y_coords.flatten()]).transpose()
-            address.extend(list(coord_candidates))
+            # check if centre is inside the roi
+            dist = [cv.pointPolygonTest(polygon.contours[0], tuple(point.astype(float) + ref_shift), True) for point in coord_candidates]
+            coordinates = coord_candidates[np.array(dist) > -500]
+            address.extend(list(coordinates))
 
     else:
         if padding:
@@ -160,6 +164,8 @@ def extract_tiles_fast(frame, tile_size=(1024, 1024), overlap=(0, 0), downsample
         y_coords, x_coords = np.meshgrid(y_range, x_range, indexing='ij')
         coord_candidates = np.array([x_coords.flatten(), y_coords.flatten()]).transpose()
         address = list(coord_candidates)
+
+    # remove tiles with majority background
     return address
 
 
