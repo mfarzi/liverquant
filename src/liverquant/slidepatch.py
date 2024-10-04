@@ -92,6 +92,77 @@ def extract_tiles(frame_size, tile_size=(1024, 1024), overlap=(0, 0), downsample
     return address
 
 
+def extract_tiles_fast(frame, tile_size=(1024, 1024), overlap=(0, 0), downsample=1, roi=None, padding=False):
+    """
+    Export image tiles' coordinates from the whole slide image (WSI) for patch-based analysis
+
+    :param frame: the bounding box in the native resolution of the whole slide image (WSI);
+                  [(col_top_left, row_top_left), (col_bottom_right, row_bottom_right)]
+    :param tile_size:  the size of each tile used to sweep the WSI; (width, height)
+    :param overlap:    the amount of overlap between adjacent tiles; (width, height)
+    :param downsample: the downsampling factor as power of two
+    :param roi:        a list of contours (numpy arrays) identifying the regions of interest (ROIs) at native resolution
+
+    :return address: a list of tuples (col, row) representing the top-left corner of each tile
+    """
+    # check if tile size and the overlap are scalar
+    if np.isscalar(tile_size):
+        tile_size = (tile_size, tile_size)
+
+    if np.isscalar(overlap):
+        overlap = (overlap, overlap)
+
+    # frame
+    col_min, row_min = frame[0]
+    col_max, row_max = frame[1]
+
+    # extract patches
+    stride_x = tile_size[0] - 2 * overlap[0]
+    stride_y = tile_size[1] - 2 * overlap[1]
+    ref_stride_x = stride_x * downsample
+    ref_stride_y = stride_y * downsample
+    ref_tile_size = (tile_size[0] * downsample, tile_size[1] * downsample)
+    ref_overlap = (overlap[0] * downsample, overlap[1] * downsample)
+
+    if roi is not None:
+        address = []
+        for polygon in roi:
+            col_start, row_start, w, h = cv.boundingRect(polygon.contours[0])
+
+            if padding:
+                col_stop = col_start+w
+                row_stop = row_start+h
+            else:
+                col_stop = min(col_start+w, col_max-ref_tile_size[0])
+                row_stop = min(row_start+h, row_max-ref_tile_size[1])
+
+            col_start = max(col_start - ref_overlap[0], col_min)
+            row_start = max(row_start - ref_overlap[1], row_min)
+            if (col_stop - col_start) <= 0 or (row_stop - row_start) <= 0:
+                # polygon is not in specified frame, skip
+                continue
+
+            x_range = np.arange(col_start, col_stop, step=ref_stride_x)
+            y_range = np.arange(row_start, row_stop, step=ref_stride_y)
+            y_coords, x_coords = np.meshgrid(y_range, x_range, indexing='ij')
+            coord_candidates = np.array([x_coords.flatten(), y_coords.flatten()]).transpose()
+            address.extend(list(coord_candidates))
+
+    else:
+        if padding:
+            col_stop = col_max
+            row_stop = row_max
+        else:
+            col_stop = col_max - ref_tile_size[0]
+            row_stop = row_max - ref_tile_size[1]
+        x_range = np.arange(col_min, col_stop, step=ref_stride_x)
+        y_range = np.arange(row_min, row_stop, step=ref_stride_y)
+        y_coords, x_coords = np.meshgrid(y_range, x_range, indexing='ij')
+        coord_candidates = np.array([x_coords.flatten(), y_coords.flatten()]).transpose()
+        address = list(coord_candidates)
+    return address
+
+
 def get_tile_image(slide, address, tile_size, downsample=1):
     """
     Helper function for openslide-python library to return an RGB image for a tile (numpy array)
