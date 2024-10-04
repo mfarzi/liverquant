@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image
 from cv2geojson import draw_geocontours
 import random
-
+import cv2 as cv
 
 class PatchGenerator:
     """
